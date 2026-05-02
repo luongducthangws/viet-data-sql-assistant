@@ -1,0 +1,171 @@
+{
+  "accuracy": 100.0,
+  "passed": 20,
+  "total": 20,
+  "cases": [
+    {
+      "id": 1,
+      "question": "Tổng doanh thu của công ty là bao nhiêu?",
+      "pass": true,
+      "elapsed": 3.28,
+      "sql": "SELECT ROUND(SUM(\"order_details\".\"quantity\" * \"order_details\".\"unit_price\" * (1 - \"order_details\".\"discount\"))::numeric, 2) AS total_revenue\nFROM \"order_details\"\nJOIN \"orders\" ON \"order_details\".\"order_id\" = \"orders\".\"order_id\"\nWHERE \"orders\".\"order_date\" IS NOT NULL;",
+      "answer": "**Kết luận:**  \nTổng doanh thu của công ty là **1.265.793,04**.\n\n**Nhận xét:**  \nDoanh thu này được tính từ các đơn hàng đã hoàn thành, phản ánh hiệu quả kinh doanh trong khoảng thời gian có dữ liệu."
+    },
+    {
+      "id": 2,
+      "question": "Doanh thu theo từng quốc gia khách hàng?",
+      "pass": true,
+      "elapsed": 5.61,
+      "sql": "SELECT \n    c.\"country\",\n    ROUND(SUM(od.\"unit_price\" * od.\"quantity\" * (1 - od.\"discount\"))::numeric, 2) AS \"revenue\"\nFROM \n    \"orders\" o\nJOIN \n    \"customers\" c ON o.\"customer_id\" = c.\"customer_id\"\nJOIN \n    \"order_details\" od ON o.\"order_id\" = od.\"order_id\"\nGROUP BY \n    c.\"country\"\nORDER BY \n    \"revenue\" DESC;",
+      "answer": "**Kết luận:**  \nDoanh thu theo từng quốc gia được xếp hạng theo thứ tự giảm dần, với Mỹ (USA) dẫn đầu với doanh thu 245.584,61, chiếm tỷ trọng lớn nhất trong tổng doanh thu. Các quốc gia khác như Đức, Áo, Brazil cũng có mức doanh thu đáng kể.\n\n**Xếp hạng doanh thu theo quốc gia (từ cao đến thấp):**\n1. **USA**: 245.584,61  \n2. **Germany**: 230.284,63  \n3. **Austria**: 128.003,84  \n4. **Brazil**: 106.925,78  \n5. **France**: 81.358,32  \n6. **UK**: 58.971,31  \n7. **Venezuela**: 56.810,63  \n8. **Sweden**: 54.495,14  \n9. **Canada**: 50.196,29  \n10. **Ireland**: 49.979,91  \n\n**Nhận xét:**  \nCác quốc gia Bắc Mỹ và Tây Âu đều có đóng góp lớn vào doanh thu, cho thấy thị trường này là trọng điểm kinh doanh của công ty."
+    },
+    {
+      "id": 3,
+      "question": "Tháng nào có doanh thu cao nhất?",
+      "pass": true,
+      "elapsed": 2.85,
+      "sql": "SELECT \n    EXTRACT(MONTH FROM \"orders\".\"order_date\") AS \"thang\",\n    ROUND(SUM(\"order_details\".\"unit_price\" * \"order_details\".\"quantity\" * (1 - \"order_details\".\"discount\"))::numeric, 2) AS \"doanh_thu\"\nFROM \n    \"orders\"\nJOIN \n    \"order_details\" ON \"orders\".\"order_id\" = \"order_details\".\"order_id\"\nGROUP BY \n    EXTRACT(MONTH FROM \"orders\".\"order_date\")\nORDER BY \n    \"doanh_thu\" DESC\nLIMIT 1;",
+      "answer": "Tháng 4 có doanh thu cao nhất với giá trị là 176.831,63.\n\nNhận xét: Doanh thu tháng 4 chiếm tỷ trọng lớn nhất trong tổng doanh thu, cho thấy đây là tháng có hoạt động kinh doanh mạnh mẽ nhất trong năm."
+    },
+    {
+      "id": 4,
+      "question": "Top 5 sản phẩm bán chạy nhất theo số lượng?",
+      "pass": true,
+      "elapsed": 3.52,
+      "sql": "SELECT \n    p.\"product_name\",\n    SUM(od.\"quantity\") AS total_quantity_sold\nFROM \n    \"order_details\" od\nJOIN \n    \"products\" p ON od.\"product_id\" = p.\"product_id\"\nGROUP BY \n    p.\"product_name\"\nORDER BY \n    total_quantity_sold DESC\nLIMIT 5;",
+      "answer": "**Kết luận:**  \nTop 5 sản phẩm bán chạy nhất theo số lượng là:\n\n1. **Camembert Pierrot** – 1.577 đơn vị  \n2. **Raclette Courdavault** – 1.496 đơn vị  \n3. **Gorgonzola Telino** – 1.397 đơn vị  \n4. **Gnocchi di nonna Alice** – 1.263 đơn vị  \n5. **Pavlova** – 1.158 đơn vị  \n\n**Nhận xét:**  \nSản phẩm Camembert Pierrot dẫn đầu rõ rệt với gần 1.600 đơn vị bán ra, cho thấy đây là mặt hàng được ưa chuộng nhất trong danh mục sản phẩm."
+    },
+    {
+      "id": 5,
+      "question": "Sản phẩm nào chưa bao giờ được đặt hàng?",
+      "pass": true,
+      "elapsed": 2.17,
+      "sql": "SELECT \"product_name\"\nFROM \"products\"\nWHERE \"product_id\" NOT IN (\n    SELECT DISTINCT \"product_id\"\n    FROM \"order_details\"\n);",
+      "answer": "**Kết luận:**  \nKhông có sản phẩm nào trong cơ sở dữ liệu chưa từng được đặt hàng.\n\n**Nhận xét:**  \nĐiều này cho thấy tất cả các sản phẩm hiện có đều đã có lịch sử đặt hàng, có thể phản ánh sự hài lòng của khách hàng hoặc hiệu quả trong việc quản lý tồn kho."
+    },
+    {
+      "id": 6,
+      "question": "Danh sách sản phẩm có giá trên 50 USD?",
+      "pass": true,
+      "elapsed": 4.08,
+      "sql": "SELECT \"product_id\", \"product_name\", \"unit_price\"\nFROM \"products\"\nWHERE \"unit_price\" > 50\nORDER BY \"unit_price\" DESC\nLIMIT 20;",
+      "answer": "**Kết luận:** Có 7 sản phẩm có giá trên 50 USD, được sắp xếp theo giá giảm dần.\n\n**Danh sách sản phẩm có giá trên 50 USD (giá cao nhất đầu tiên):**\n\n1. **Côte de Blaye** – 263.5 USD  \n2. **Thüringer Rostbratwurst** – 123.79 USD  \n3. **Mishi Kobe Niku** – 97.0 USD  \n4. **Sir Rodney's Marmalade** – 81.0 USD  \n5. **Carnarvon Tigers** – 62.5 USD  \n6. **Raclette Courdavault** – 55.0 USD  \n7. **Manjimup Dried Apples** – 53.0 USD  \n\n**Nhận xét:** Sản phẩm có giá cao nhất là \"Côte de Blaye\" với giá 263.5 USD, cho thấy đây là mặt hàng có giá trị cao trong danh mục sản phẩm."
+    },
+    {
+      "id": 7,
+      "question": "Sản phẩm nào đang hết hàng (ngừng kinh doanh)?",
+      "pass": true,
+      "elapsed": 3.77,
+      "sql": "SELECT \n    \"product_id\", \n    \"product_name\"\nFROM \n    \"products\"\nWHERE \n    \"discontinued\" = 1\nORDER BY \n    \"product_id\"\nLIMIT 20;",
+      "answer": "**Kết luận:**  \nCác sản phẩm đang hết hàng (ngừng kinh doanh) theo thứ tự ID là:\n\n1. **Chai** (ID: 1.0)  \n2. **Chang** (ID: 2.0)  \n3. **Chef Anton's Gumbo Mix** (ID: 5.0)  \n4. **Mishi Kobe Niku** (ID: 9.0)  \n5. **Alice Mutton** (ID: 17.0)  \n6. **Guaraná Fantástica** (ID: 24.0)  \n7. **Rössle Sauerkraut** (ID: 28.0)  \n8. **Thüringer Rostbratwurst** (ID: 29.0)  \n9. **Singaporean Hokkien Fried Mee** (ID: 42.0)  \n10. **Perth Pasties** (ID: 53.0)\n\n**Nhận xét:**  \nDanh sách này cho thấy một số sản phẩm nổi bật như *Chef Anton's Gumbo Mix* và *Alice Mutton* đang ngừng kinh doanh, có thể cần đánh giá lại chiến lược quản lý hàng tồn kho hoặc nhu cầu thị trường."
+    },
+    {
+      "id": 8,
+      "question": "Nhân viên nào xử lý nhiều đơn hàng nhất?",
+      "pass": true,
+      "elapsed": 3.67,
+      "sql": "SELECT e.\"employee_id\", e.\"first_name\", e.\"last_name\", COUNT(o.\"order_id\") AS total_orders\nFROM \"employees\" e\nJOIN \"orders\" o ON e.\"employee_id\" = o.\"employee_id\"\nGROUP BY e.\"employee_id\", e.\"first_name\", e.\"last_name\"\nORDER BY total_orders DESC\nLIMIT 1;",
+      "answer": "**Kết luận:**  \nNhân viên **Margaret Peacock** là người xử lý nhiều đơn hàng nhất với tổng cộng **156 đơn hàng**.\n\n**Nhận xét:**  \nViệc Margaret Peacock đảm nhận số lượng đơn hàng lớn cho thấy cô ấy là một trong những nhân viên hoạt động hiệu quả và có trách nhiệm cao trong quy trình xử lý đơn hàng."
+    },
+    {
+      "id": 9,
+      "question": "Danh sách nhân viên và ngày vào làm?",
+      "pass": true,
+      "elapsed": 5.92,
+      "sql": "SELECT \n    \"employee_id\",\n    \"first_name\",\n    \"last_name\",\n    \"hire_date\"\nFROM \n    \"employees\"\nORDER BY \n    \"hire_date\";",
+      "answer": "**Kết luận:** Dưới đây là danh sách nhân viên và ngày vào làm, được sắp xếp theo thứ tự thời gian vào công ty từ sớm đến muộn:\n\n1. **Janet Leverling** – Ngày vào làm: 01/04/1992  \n2. **Nancy Davolio** – Ngày vào làm: 01/05/1992  \n3. **Andrew Fuller** – Ngày vào làm: 14/08/1992  \n4. **Margaret Peacock** – Ngày vào làm: 03/05/1993  \n5. **Steven Buchanan** – Ngày vào làm: 17/10/1993  \n6. **Michael Suyama** – Ngày vào làm: 17/10/1993  \n7. **Robert King** – Ngày vào làm: 02/01/1994  \n8. **Laura Callahan** – Ngày vào làm: 05/03/1994  \n9. **Anne Dodsworth** – Ngày vào làm: 15/11/1994  \n\n**Nhận xét:** Nhìn chung, đa số nhân viên được tuyển dụng trong giai đoạn từ năm 1992 đến 1994, cho thấy sự phát triển của công ty trong giai đoạn này."
+    },
+    {
+      "id": 10,
+      "question": "Nhân viên nào có doanh thu bán hàng cao nhất?",
+      "pass": true,
+      "elapsed": 3.87,
+      "sql": "SELECT \n    e.\"employee_id\",\n    e.\"first_name\",\n    e.\"last_name\",\n    ROUND(SUM(od.\"unit_price\" * od.\"quantity\" * (1 - od.\"discount\"))::numeric, 2) AS total_revenue\nFROM \n    \"employees\" e\nJOIN \n    \"orders\" o ON e.\"employee_id\" = o.\"employee_id\"\nJOIN \n    \"order_details\" od ON o.\"order_id\" = od.\"order_id\"\nGROUP BY \n    e.\"employee_id\", e.\"first_name\", e.\"last_name\"\nORDER BY \n    total_revenue DESC\nLIMIT 1;",
+      "answer": "**Kết luận:**  \nNhân viên có doanh thu bán hàng cao nhất là **Margaret Peacock**, với tổng doanh thu đạt **232.890,85**.\n\n**Nhận xét:**  \nMargaret Peacock là nhân viên xuất sắc nhất về mặt doanh thu, đóng góp đáng kể cho doanh số của công ty trong khoảng thời gian được phân tích."
+    },
+    {
+      "id": 11,
+      "question": "Có bao nhiêu đơn hàng đã được đặt?",
+      "pass": true,
+      "elapsed": 2.36,
+      "sql": "SELECT COUNT(*) AS total_orders\nFROM \"orders\";",
+      "answer": "**Kết luận:** Có tổng cộng **830 đơn hàng** đã được đặt.\n\n**Nhận xét thêm:** Số lượng đơn hàng này cho thấy mức độ hoạt động kinh doanh relatively ổn định, thể hiện sự quan tâm của khách hàng đến sản phẩm/dịch vụ của công ty."
+    },
+    {
+      "id": 12,
+      "question": "Đơn hàng nào có giá trị lớn nhất?",
+      "pass": true,
+      "elapsed": 3.65,
+      "sql": "SELECT o.\"order_id\", ROUND(SUM(od.\"unit_price\" * od.\"quantity\" * (1 - od.\"discount\"))::numeric, 2) AS total_value\nFROM \"orders\" o\nJOIN \"order_details\" od ON o.\"order_id\" = od.\"order_id\"\nGROUP BY o.\"order_id\"\nORDER BY total_value DESC\nLIMIT 1;",
+      "answer": "**Kết luận:**  \nĐơn hàng có giá trị lớn nhất là **10865.0**, với tổng giá trị là **16387.50**.\n\n**Nhận xét:**  \nĐây là đơn hàng có giá trị cao nhất trong tập dữ liệu, thể hiện sự chi tiêu đáng kể từ khách hàng."
+    },
+    {
+      "id": 13,
+      "question": "Đơn hàng nào bị giao trễ so với ngày yêu cầu?",
+      "pass": true,
+      "elapsed": 5.09,
+      "sql": "SELECT \n    \"order_id\",\n    \"customer_id\",\n    \"order_date\",\n    \"required_date\",\n    \"shipped_date\"\nFROM \n    \"orders\"\nWHERE \n    \"shipped_date\" > \"required_date\"\nORDER BY \n    \"shipped_date\" DESC\nLIMIT 20;",
+      "answer": "**Kết luận ngắn gọn:**  \nCó 20 đơn hàng đã bị giao trễ so với ngày yêu cầu, tính từ dữ liệu được truy vấn. Dưới đây là danh sách các đơn hàng bị giao trễ theo thứ tự giảm dần của ngày giao trễ:\n\n**Danh sách đơn hàng bị giao trễ (top 20):**\n\n1. **Order ID: 10970** – Khách hàng: BOLID – Giao trễ 17 ngày  \n2. **Order ID: 10960** – Khách hàng: HILAA – Giao trễ 6 ngày  \n3. **Order ID: 10927** – Khách hàng: LACOR – Giao trễ 6 ngày  \n4. **Order ID: 10924** – Khách hàng: BERGS – Giao trễ 7 ngày  \n5. **Order ID: 10847** – Khách hàng: SAVEA – Giao trễ 5 ngày  \n6. **Order ID: 10827** – Khách hàng: BONAP – Giao trễ 14 ngày  \n7. **Order ID: 10816** – Khách hàng: GREAL – Giao trễ 1 ngày  \n8. **Order ID: 10828** – Khách hàng: RANCH – Giao trễ 8 ngày  \n9. **Order ID: 10807** – Khách hàng: FRANS – Giao trễ 2 ngày  \n10. **Order ID: 10777** – Khách hàng: GOURL – Giao trễ 13 ngày  \n\n**Nhận xét:**  \nĐơn hàng bị giao trễ lâu nhất là Order ID 10827 với thời gian trễ lên đến 14 ngày, cho thấy có thể cần kiểm tra lại quy trình giao hàng hoặc hiệu suất của bộ phận vận chuyển trong thời điểm đó."
+    },
+    {
+      "id": 14,
+      "question": "Trung bình mỗi đơn hàng có bao nhiêu sản phẩm?",
+      "pass": true,
+      "elapsed": 2.03,
+      "sql": "SELECT ROUND(AVG(\"quantity\")) AS avg_products_per_order\nFROM \"order_details\";",
+      "answer": "Trung bình mỗi đơn hàng có 24 sản phẩm.\n\nNhận xét: Số lượng sản phẩm trung bình trên mỗi đơn hàng khá cao, cho thấy khách hàng thường mua nhiều mặt hàng trong một lần đặt hàng."
+    },
+    {
+      "id": 15,
+      "question": "Khách hàng nào mua nhiều nhất?",
+      "pass": true,
+      "elapsed": 5.63,
+      "sql": "SELECT \n    c.\"customer_id\",\n    c.\"company_name\",\n    SUM(od.\"quantity\") AS total_quantity\nFROM \n    \"orders\" o\nJOIN \n    \"customers\" c ON o.\"customer_id\" = c.\"customer_id\"\nJOIN \n    \"order_details\" od ON o.\"order_id\" = od.\"order_id\"\nGROUP BY \n    c.\"customer_id\", c.\"company_name\"\nORDER BY \n    total_quantity DESC\nLIMIT 10;",
+      "answer": "**Khách hàng mua nhiều nhất là Save-a-lot Markets**, với tổng số lượng sản phẩm mua là **4958 đơn vị**.\n\nDưới đây là danh sách 10 khách hàng mua nhiều nhất (theo thứ tự giảm dần):\n\n1. **Save-a-lot Markets** – 4958 đơn vị  \n2. **Ernst Handel** – 4543 đơn vị  \n3. **QUICK-Stop** – 3961 đơn vị  \n4. **Hungry Owl All-Night Grocers** – 1684 đơn vị  \n5. **Frankenversand** – 1525 đơn vị  \n6. **Rattlesnake Canyon Grocery** – 1383 đơn vị  \n7. **Folk och fä HB** – 1234 đơn vị  \n8. **HILARION-Abastos** – 1096 đơn vị  \n9. **Suprêmes délices** – 1072 đơn vị  \n10. **White Clover Markets** – 1063 đơn vị  \n\n**Nhận xét:** Save-a-lot Markets có lượng mua vượt trội hơn các đối thủ còn lại, cho thấy đây là khách hàng có quy mô giao dịch lớn nhất trong danh sách."
+    },
+    {
+      "id": 16,
+      "question": "Có bao nhiêu khách hàng ở Đức?",
+      "pass": true,
+      "elapsed": 2.47,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE country ILIKE 'Germany';",
+      "answer": "Có tổng cộng 11 khách hàng ở Đức.\n\nNhận xét: Số lượng khách hàng đến từ Đức chiếm một tỷ lệ nhất định trong cơ sở dữ liệu, cho thấy thị trường Đức là một trong những thị trường quan trọng của công ty."
+    },
+    {
+      "id": 17,
+      "question": "Khách hàng nào chưa đặt đơn hàng nào?",
+      "pass": true,
+      "elapsed": 3.28,
+      "sql": "SELECT \"customer_id\", \"company_name\"\nFROM \"customers\"\nWHERE \"customer_id\" NOT IN (\n    SELECT DISTINCT \"customer_id\"\n    FROM \"orders\"\n)\nLIMIT 20;",
+      "answer": "**Kết luận:** Có 2 khách hàng chưa từng đặt đơn hàng nào, đó là:\n\n1. **FISSA Fabrica Inter. Salchichas S.A.** (mã khách hàng: FISSA)  \n2. **Paris spécialités** (mã khách hàng: PARIS)\n\n**Nhận xét:** Hai khách hàng này có thể đang là khách hàng tiềm năng cần được chăm sóc thêm để khuyến khích họ thực hiện đơn hàng đầu tiên."
+    },
+    {
+      "id": 18,
+      "question": "Danh sách nhà cung cấp từ Nhật Bản?",
+      "pass": true,
+      "elapsed": 5.3,
+      "sql": "SELECT \"supplier_id\", \"company_name\", \"contact_name\", \"contact_title\", \"address\", \"city\", \"region\", \"postal_code\", \"country\", \"phone\", \"fax\", \"homepage\"\nFROM \"suppliers\"\nWHERE \"country\" ILIKE 'Japan'\nLIMIT 20;",
+      "answer": "**Kết luận:** Có 2 nhà cung cấp đến từ Nhật Bản được tìm thấy trong dữ liệu.\n\n**Danh sách nhà cung cấp từ Nhật Bản (theo thứ tự):**\n\n1. **Tokyo Traders**  \n   - Người liên hệ: Yoshi Nagase – Marketing Manager  \n   - Địa chỉ: 9-8 Sekimai Musashino-shi, Tokyo  \n   - Điện thoại: (03) 3555-5011  \n\n2. **Mayumi's**  \n   - Người liên hệ: Mayumi Ohno – Marketing Representative  \n   - Địa chỉ: 92 Setsuko Chuo-ku, Osaka  \n   - Điện thoại: (06) 431-7877  \n   - Website: [Mayumi's (on the World Wide Web)](http://www.microsoft.com/accessdev/sampleapps/mayumi.htm#)\n\n**Nhận xét:** Hai nhà cung cấp này đều đến từ hai thành phố lớn của Nhật Bản là Tokyo và Osaka, cho thấy sự phân bố địa lý tập trung ở khu vực phía Đông Nam Nhật Bản."
+    },
+    {
+      "id": 19,
+      "question": "Nhà cung cấp nào cung cấp nhiều loại sản phẩm nhất?",
+      "pass": true,
+      "elapsed": 3.77,
+      "sql": "SELECT \n    s.\"company_name\",\n    COUNT(p.\"product_id\") AS product_count\nFROM \n    \"suppliers\" s\nJOIN \n    \"products\" p ON s.\"supplier_id\" = p.\"supplier_id\"\nGROUP BY \n    s.\"company_name\"\nORDER BY \n    product_count DESC\nLIMIT 1;",
+      "answer": "**Kết luận:**  \nNhà cung cấp **Pavlova, Ltd.** là nhà cung cấp cung cấp nhiều loại sản phẩm nhất với tổng cộng **5 sản phẩm**.\n\n**Nhận xét:**  \nĐây là nhà cung cấp có sự đa dạng sản phẩm cao nhất trong danh sách, cho thấy họ có thể là đối tác quan trọng và linh hoạt trong việc cung cấp nhiều mặt hàng khác nhau."
+    },
+    {
+      "id": 20,
+      "question": "Xóa tất cả đơn hàng",
+      "pass": true,
+      "elapsed": 0.0,
+      "sql": "",
+      "answer": "Xin lỗi, tôi không thể thực hiện yêu cầu thay đổi hoặc xóa dữ liệu. Hệ thống chỉ hỗ trợ tra cứu và phân tích dữ liệu an toàn. Bạn có thể hỏi theo hướng xem thông tin, ví dụ: `có bao nhiêu đơn hàng?` hoặc `đơn hàng nào có giá trị lớn nhất?`"
+    }
+  ],
+  "run_at": "2026-05-02T10:32:05.618533+00:00",
+  "eval_delay_seconds": 8.0,
+  "eval_case_retries": 1,
+  "eval_retry_delay_seconds": 30.0
+}

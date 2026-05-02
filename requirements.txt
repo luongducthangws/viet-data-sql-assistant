@@ -1,0 +1,20 @@
+# Web framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# Database
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9
+
+# LLM
+google-generativeai==0.7.2
+openai==1.30.1          # fallback, có thể bỏ nếu chỉ dùng Gemini
+
+# SQL safety
+sqlparse==0.5.0
+
+# Config
+python-dotenv==1.0.1
+
+# Validation
+pydantic==2.7.1

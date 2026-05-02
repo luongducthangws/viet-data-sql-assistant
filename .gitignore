@@ -1,0 +1,42 @@
+﻿# Environment and secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+rag-env/
+.venv/
+venv/
+env/
+
+# Logs and runtime output
+*.log
+uvicorn*.out.log
+uvicorn*.err.log
+
+# Local/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+desktop.ini
+
+# Generated image artifacts
+Gemini_Generated_Image_*.png
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+db/schema_snapchat.json
