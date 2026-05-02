@@ -1,29 +1,29 @@
-﻿# Viet Data SQL Assistant
+# Viet Data SQL Assistant
 
-Há»‡ thá»‘ng chatbot dá»¯ liá»‡u ná»™i bá»™ cho phÃ©p ngÆ°á»i dÃ¹ng há»i báº±ng tiáº¿ng Viá»‡t tá»± nhiÃªn vÃ  nháº­n cÃ¢u tráº£ lá»i dá»±a trÃªn dá»¯ liá»‡u tháº­t trong PostgreSQL. Project hiá»‡n thá»±c hÃ³a má»™t pipeline **schema-grounded Text-to-SQL**: há»‡ thá»‘ng Ä‘á»c schema database, Ä‘Æ°a metadata vÃ o prompt nhÆ° retrieval context, sinh SQL an toÃ n, thá»±c thi trÃªn database, sau Ä‘Ã³ tá»•ng há»£p káº¿t quáº£ thÃ nh cÃ¢u tráº£ lá»i tiáº¿ng Viá»‡t.
+Hệ thống chatbot dữ liệu nội bộ cho phép người dùng hỏi bằng tiếng Việt tự nhiên và nhận câu trả lời dựa trên dữ liệu thật trong PostgreSQL. Project hiện thực hóa một pipeline **schema-grounded Text-to-SQL**: hệ thống đọc schema database, đưa metadata vào prompt như retrieval context, sinh SQL an toàn, thực thi trên database, sau đó tổng hợp kết quả thành câu trả lời tiếng Việt.
 
-> Project nÃ y táº­p trung vÃ o bÃ i toÃ¡n Vietnamese Text-to-SQL cho dá»¯ liá»‡u doanh nghiá»‡p. Kiáº¿n trÃºc cÃ³ thá»ƒ má»Ÿ rá»™ng sang domain khÃ¡c báº±ng cÃ¡ch thay datasource, schema snapshot vÃ  prompt nghiá»‡p vá»¥.
+> Project này tập trung vào bài toán Vietnamese Text-to-SQL cho dữ liệu doanh nghiệp. Kiến trúc có thể mở rộng sang domain khác bằng cách thay datasource, schema snapshot và prompt nghiệp vụ.
 
 ## Highlights
 
-- Há»i Ä‘Ã¡p dá»¯ liá»‡u báº±ng tiáº¿ng Viá»‡t trÃªn PostgreSQL thÃ´ng qua FastAPI vÃ  giao diá»‡n web tá»‘i giáº£n.
-- Schema-grounded generation: inject **14 báº£ng, 92 cá»™t, primary keys, foreign keys vÃ  sample rows** tá»« `schema_snapshot.json` vÃ o prompt.
-- Multi-provider LLM support: Hugging Face Inference Providers, Gemini vÃ  OpenAI.
-- Safety-first SQL pipeline: chá»‰ cho phÃ©p `SELECT`/`WITH`, cháº·n DDL/DML, multiple statements, comment injection vÃ  system catalog access.
-- Retry loop tá»± sá»­a SQL: náº¿u validation hoáº·c execution lá»—i, LLM nháº­n error context vÃ  sinh láº¡i SQL tá»‘i Ä‘a 2 láº§n.
-- Answer synthesis: káº¿t quáº£ SQL Ä‘Æ°á»£c format láº¡i rá»“i Ä‘Æ°a cho LLM tá»•ng há»£p thÃ nh cÃ¢u tráº£ lá»i tá»± nhiÃªn báº±ng tiáº¿ng Viá»‡t.
-- Evaluation harness gá»“m 20 cÃ¢u há»i nghiá»‡p vá»¥ máº«u, bao phá»§ doanh thu, sáº£n pháº©m, Ä‘Æ¡n hÃ ng, khÃ¡ch hÃ ng, nhÃ¢n viÃªn, nhÃ  cung cáº¥p vÃ  unsafe request.
+- Hỏi đáp dữ liệu bằng tiếng Việt trên PostgreSQL thông qua FastAPI và giao diện web tối giản.
+- Schema-grounded generation: inject **14 bảng, 92 cột, primary keys, foreign keys và sample rows** từ `schema_snapshot.json` vào prompt.
+- Multi-provider LLM support: Hugging Face Inference Providers, Gemini và OpenAI.
+- Safety-first SQL pipeline: chỉ cho phép `SELECT`/`WITH`, chặn DDL/DML, multiple statements, comment injection và system catalog access.
+- Retry loop tự sửa SQL: nếu validation hoặc execution lỗi, LLM nhận error context và sinh lại SQL tối đa 2 lần.
+- Answer synthesis: kết quả SQL được format lại rồi đưa cho LLM tổng hợp thành câu trả lời tự nhiên bằng tiếng Việt.
+- Evaluation harness gồm 20 câu hỏi nghiệp vụ mẫu, bao phủ doanh thu, sản phẩm, đơn hàng, khách hàng, nhân viên, nhà cung cấp và unsafe request.
 - Best recorded benchmark: **20/20 passed, 100.0% accuracy** with throttled Hugging Face evaluation; latest and best result files are stored separately.
 
 ## Problem Statement
 
-Trong doanh nghiá»‡p, dá»¯ liá»‡u thÆ°á»ng náº±m trong relational database nhÆ°ng ngÆ°á»i dÃ¹ng nghiá»‡p vá»¥ khÃ´ng muá»‘n viáº¿t SQL. Má»¥c tiÃªu cá»§a project lÃ  xÃ¢y dá»±ng má»™t assistant cÃ³ thá»ƒ:
+Trong doanh nghiệp, dữ liệu thường nằm trong relational database nhưng người dùng nghiệp vụ không muốn viết SQL. Mục tiêu của project là xây dựng một assistant có thể:
 
-- hiá»ƒu cÃ¢u há»i tiáº¿ng Viá»‡t tá»± nhiÃªn;
-- tá»± xÃ¡c Ä‘á»‹nh báº£ng, cá»™t, quan há»‡ vÃ  metric cáº§n truy váº¥n;
-- sinh SQL PostgreSQL chÃ­nh xÃ¡c;
-- báº£o vá»‡ database khá»i cÃ¡c thao tÃ¡c thay Ä‘á»•i dá»¯ liá»‡u;
-- tráº£ lá»i báº±ng ngÃ´n ngá»¯ dá»… hiá»ƒu thay vÃ¬ chá»‰ tráº£ báº£ng káº¿t quáº£.
+- hiểu câu hỏi tiếng Việt tự nhiên;
+- tự xác định bảng, cột, quan hệ và metric cần truy vấn;
+- sinh SQL PostgreSQL chính xác;
+- bảo vệ database khỏi các thao tác thay đổi dữ liệu;
+- trả lời bằng ngôn ngữ dễ hiểu thay vì chỉ trả bảng kết quả.
 
 ## Architecture
 
@@ -64,7 +64,7 @@ sequenceDiagram
     participant V as SQL Validator
     participant DB as PostgreSQL
 
-    U->>UI: Há»i báº±ng tiáº¿ng Viá»‡t
+    U->>UI: Hỏi bằng tiếng Việt
     UI->>API: POST /api/v1/ask
     API->>C: ask(question, debug)
     C->>C: Classify intent
@@ -129,75 +129,75 @@ flowchart LR
 
 ### 1. Startup
 
-FastAPI khá»Ÿi Ä‘á»™ng táº¡i `src/api/main.py`. Trong lifespan startup, há»‡ thá»‘ng:
+FastAPI khởi động tại `src/api/main.py`. Trong lifespan startup, hệ thống:
 
-- load biáº¿n mÃ´i trÆ°á»ng tá»« `.env`;
-- validate cáº¥u hÃ¬nh LLM provider;
-- khá»Ÿi táº¡o singleton `SQLChain`;
-- load schema snapshot vÃ o memory Ä‘á»ƒ trÃ¡nh query metadata á»Ÿ má»—i request.
+- load biến môi trường từ `.env`;
+- validate cấu hình LLM provider;
+- khởi tạo singleton `SQLChain`;
+- load schema snapshot vào memory để tránh query metadata ở mỗi request.
 
 ### 2. Schema Grounding
 
-`src/database/schema_inspector.py` Ä‘á»c `db/schema_snapshot.json` vÃ  format thÃ nh context gá»“m:
+`src/database/schema_inspector.py` đọc `db/schema_snapshot.json` và format thành context gồm:
 
-- tÃªn báº£ng;
-- tÃªn cá»™t vÃ  kiá»ƒu dá»¯ liá»‡u;
+- tên bảng;
+- tên cột và kiểu dữ liệu;
 - primary key;
 - foreign key;
-- sample rows cho cÃ¡c báº£ng quan trá»ng.
+- sample rows cho các bảng quan trọng.
 
-ÄÃ¢y lÃ  lá»›p grounding chÃ­nh giÃºp LLM sinh SQL dá»±a trÃªn schema tháº­t thay vÃ¬ Ä‘oÃ¡n tÃªn báº£ng/cá»™t.
+Đây là lớp grounding chính giúp LLM sinh SQL dựa trên schema thật thay vì đoán tên bảng/cột.
 
 ### 3. SQL Generation
 
-`src/llm/prompt_builder.py` táº¡o prompt Text-to-SQL vá»›i cÃ¡c rÃ ng buá»™c rÃµ rÃ ng:
+`src/llm/prompt_builder.py` tạo prompt Text-to-SQL với các ràng buộc rõ ràng:
 
-- chá»‰ tráº£ SQL thuáº§n;
-- chá»‰ dÃ¹ng `SELECT`;
-- Æ°u tiÃªn PostgreSQL syntax;
-- dÃ¹ng `ILIKE` khi so sÃ¡nh chuá»—i;
-- thÃªm `LIMIT` há»£p lÃ½;
-- hiá»ƒu metric nghiá»‡p vá»¥ nhÆ° doanh thu, top sáº£n pháº©m, khÃ¡ch hÃ ng mua nhiá»u nháº¥t.
+- chỉ trả SQL thuần;
+- chỉ dùng `SELECT`;
+- ưu tiên PostgreSQL syntax;
+- dùng `ILIKE` khi so sánh chuỗi;
+- thêm `LIMIT` hợp lý;
+- hiểu metric nghiệp vụ như doanh thu, top sản phẩm, khách hàng mua nhiều nhất.
 
 ### 4. Safety Validation
 
-`src/llm/sql_validator.py` lÃ  lá»›p báº£o vá»‡ trÆ°á»›c khi cháº¡m database:
+`src/llm/sql_validator.py` là lớp bảo vệ trước khi chạm database:
 
-- chá»‰ cháº¥p nháº­n SQL báº¯t Ä‘áº§u báº±ng `SELECT` hoáº·c `WITH`;
-- cháº·n `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `CREATE`, `GRANT`, `REVOKE`;
-- cháº·n multiple statements;
-- cháº·n SQL comments vÃ  cÃ¡c pattern cÃ³ rá»§i ro injection;
-- clean markdown/code fences tá»« output LLM.
+- chỉ chấp nhận SQL bắt đầu bằng `SELECT` hoặc `WITH`;
+- chặn `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `CREATE`, `GRANT`, `REVOKE`;
+- chặn multiple statements;
+- chặn SQL comments và các pattern có rủi ro injection;
+- clean markdown/code fences từ output LLM.
 
 ### 5. Query Execution
 
-`src/database/executor.py` thá»±c thi SQL qua SQLAlchemy:
+`src/database/executor.py` thực thi SQL qua SQLAlchemy:
 
-- tá»± normalize má»™t sá»‘ lá»—i PostgreSQL phá»• biáº¿n, vÃ­ dá»¥ `ROUND(double precision, integer)`;
-- tá»± thÃªm `LIMIT 101` náº¿u query khÃ´ng cÃ³ limit;
-- chá»‰ tráº£ tá»‘i Ä‘a 100 dÃ²ng;
-- convert dá»¯ liá»‡u date/decimal thÃ nh format JSON-friendly.
+- tự normalize một số lỗi PostgreSQL phổ biến, ví dụ `ROUND(double precision, integer)`;
+- tự thêm `LIMIT 101` nếu query không có limit;
+- chỉ trả tối đa 100 dòng;
+- convert dữ liệu date/decimal thành format JSON-friendly.
 
 ### 6. Retry and Repair
 
-`src/chain/retry_handler.py` xá»­ lÃ½ failure loop:
+`src/chain/retry_handler.py` xử lý failure loop:
 
 - validate SQL;
 - execute SQL;
-- náº¿u lá»—i, Ä‘Æ°a error context cho LLM;
-- retry tá»‘i Ä‘a 2 láº§n;
-- dá»«ng an toÃ n náº¿u LLM retry fail hoáº·c SQL váº«n khÃ´ng há»£p lá»‡.
+- nếu lỗi, đưa error context cho LLM;
+- retry tối đa 2 lần;
+- dừng an toàn nếu LLM retry fail hoặc SQL vẫn không hợp lệ.
 
 ### 7. Answer Synthesis
 
-Sau khi cÃ³ result, há»‡ thá»‘ng format dá»¯ liá»‡u thÃ nh text ngáº¯n gá»n vÃ  gá»i LLM láº§n hai Ä‘á»ƒ tá»•ng há»£p:
+Sau khi có result, hệ thống format dữ liệu thành text ngắn gọn và gọi LLM lần hai để tổng hợp:
 
-- tráº£ lá»i trá»±c tiáº¿p cÃ¢u há»i;
-- nÃªu sá»‘ liá»‡u chÃ­nh;
-- liá»‡t kÃª top/list theo thá»© tá»± dá»… Ä‘á»c;
-- khÃ´ng bá»‹a thÃ´ng tin ngoÃ i káº¿t quáº£ SQL.
+- trả lời trực tiếp câu hỏi;
+- nêu số liệu chính;
+- liệt kê top/list theo thứ tự dễ đọc;
+- không bịa thông tin ngoài kết quả SQL.
 
-Náº¿u synthesis LLM lá»—i, há»‡ thá»‘ng dÃ¹ng fallback answer dá»±a trÃªn rows Ä‘Ã£ truy váº¥n Ä‘Æ°á»£c.
+Nếu synthesis LLM lỗi, hệ thống dùng fallback answer dựa trên rows đã truy vấn được.
 
 ## API
 
@@ -239,7 +239,7 @@ POST /api/v1/ask
 Content-Type: application/json
 
 {
-  "question": "Top 5 sáº£n pháº©m bÃ¡n cháº¡y nháº¥t?",
+  "question": "Top 5 sản phẩm bán chạy nhất?",
   "debug": false
 }
 ```
@@ -248,8 +248,8 @@ Response:
 
 ```json
 {
-  "question": "Top 5 sáº£n pháº©m bÃ¡n cháº¡y nháº¥t?",
-  "answer": "CÃ¡c sáº£n pháº©m bÃ¡n cháº¡y nháº¥t lÃ ...",
+  "question": "Top 5 sản phẩm bán chạy nhất?",
+  "answer": "Các sản phẩm bán chạy nhất là...",
   "sql": "SELECT ...",
   "row_count": 5,
   "attempts": 1,
@@ -275,31 +275,31 @@ Response:
 
 ```text
 .
-â”œâ”€â”€ db/
-â”‚   â”œâ”€â”€ northwind.sql
-â”‚   â”œâ”€â”€ schema_snapshot.json
-â”‚   â””â”€â”€ seed.py
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ api/
-â”‚   â”‚   â”œâ”€â”€ main.py
-â”‚   â”‚   â”œâ”€â”€ routes.py
-â”‚   â”‚   â”œâ”€â”€ schemas.py
-â”‚   â”‚   â””â”€â”€ ui.py
-â”‚   â”œâ”€â”€ chain/
-â”‚   â”‚   â”œâ”€â”€ sql_chain.py
-â”‚   â”‚   â””â”€â”€ retry_handler.py
-â”‚   â”œâ”€â”€ database/
-â”‚   â”‚   â”œâ”€â”€ connection.py
-â”‚   â”‚   â”œâ”€â”€ executor.py
-â”‚   â”‚   â””â”€â”€ schema_inspector.py
-â”‚   â””â”€â”€ llm/
-â”‚       â”œâ”€â”€ client.py
-â”‚       â”œâ”€â”€ prompt_builder.py
-â”‚       â””â”€â”€ sql_validator.py
-â”œâ”€â”€ eval.py
-â”œâ”€â”€ docker-compose.yml
-â”œâ”€â”€ Dockerfile
-â””â”€â”€ requirements.txt
+├── db/
+│   ├── northwind.sql
+│   ├── schema_snapshot.json
+│   └── seed.py
+├── src/
+│   ├── api/
+│   │   ├── main.py
+│   │   ├── routes.py
+│   │   ├── schemas.py
+│   │   └── ui.py
+│   ├── chain/
+│   │   ├── sql_chain.py
+│   │   └── retry_handler.py
+│   ├── database/
+│   │   ├── connection.py
+│   │   ├── executor.py
+│   │   └── schema_inspector.py
+│   └── llm/
+│       ├── client.py
+│       ├── prompt_builder.py
+│       └── sql_validator.py
+├── eval.py
+├── docker-compose.yml
+├── Dockerfile
+└── requirements.txt
 ```
 
 ## Quickstart
@@ -310,21 +310,21 @@ Response:
 cp env.example .env
 ```
 
-Chá»n má»™t LLM provider trong `.env`:
+Chọn một LLM provider trong `.env`:
 
 ```env
 LLM_PROVIDER=huggingface
 HF_TOKEN=your_token
 ```
 
-Hoáº·c:
+Hoặc:
 
 ```env
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_key
 ```
 
-Hoáº·c:
+Hoặc:
 
 ```env
 LLM_PROVIDER=openai
@@ -337,7 +337,7 @@ OPENAI_API_KEY=your_key
 docker compose up --build -d
 ```
 
-API cháº¡y táº¡i:
+API chạy tại:
 
 ```text
 http://localhost:8000
@@ -363,21 +363,21 @@ uvicorn src.api.main:app --reload --port 8000
 
 ## Evaluation
 
-Project cÃ³ sáºµn benchmark script táº¡i `eval.py` vá»›i 20 cÃ¢u há»i Ä‘áº¡i diá»‡n cho cÃ¡c nhÃ³m use case:
+Project có sẵn benchmark script tại `eval.py` với 20 câu hỏi đại diện cho các nhóm use case:
 
 - doanh thu;
-- sáº£n pháº©m bÃ¡n cháº¡y;
-- Ä‘Æ¡n hÃ ng giao trá»…;
-- khÃ¡ch hÃ ng mua nhiá»u;
-- hiá»‡u suáº¥t nhÃ¢n viÃªn;
-- nhÃ  cung cáº¥p;
-- unsafe request nhÆ° yÃªu cáº§u xÃ³a dá»¯ liá»‡u.
+- sản phẩm bán chạy;
+- đơn hàng giao trễ;
+- khách hàng mua nhiều;
+- hiệu suất nhân viên;
+- nhà cung cấp;
+- unsafe request như yêu cầu xóa dữ liệu.
 
 ### Latest Recorded Run
 
-Benchmark má»›i nháº¥t Ä‘Æ°á»£c ghi trong `tests/eval_results.json`; benchmark tá»‘t nháº¥t Ä‘Æ°á»£c giá»¯ riÃªng trong `tests/eval_best_results.json` Ä‘á»ƒ cÃ¡c láº§n cháº¡y sau khÃ´ng ghi Ä‘Ã¨ káº¿t quáº£ tá»‘t hÆ¡n trÆ°á»›c Ä‘Ã³.
+Benchmark mới nhất được ghi trong `tests/eval_results.json`; benchmark tốt nhất được giữ riêng trong `tests/eval_best_results.json` để các lần chạy sau không ghi đè kết quả tốt hơn trước đó.
 
-Káº¿t quáº£ gáº§n nháº¥t Ä‘Æ°á»£c ghi trong `tests/eval_results.json`:
+Kết quả gần nhất được ghi trong `tests/eval_results.json`:
 
 | Metric | Value |
 | --- | ---: |
@@ -393,27 +393,27 @@ Káº¿t quáº£ gáº§n nháº¥t Ä‘Æ°á»£c ghi trong `tests/eval_resu
 | Slowest case | Case 9, 5.92s |
 | Empty-SQL / provider-failure cases | 0 |
 
-Best run hiá»‡n táº¡i pass Ä‘áº§y Ä‘á»§ 20/20 test cases, bao phá»§ cÃ¡c nhÃ³m truy váº¥n quan trá»ng:
+Best run hiện tại pass đầy đủ 20/20 test cases, bao phủ các nhóm truy vấn quan trọng:
 
 
-- tá»•ng doanh thu cÃ´ng ty;
-- doanh thu theo quá»‘c gia;
-- thÃ¡ng cÃ³ doanh thu cao nháº¥t;
-- top sáº£n pháº©m bÃ¡n cháº¡y;
-- sáº£n pháº©m chÆ°a tá»«ng Ä‘Æ°á»£c Ä‘áº·t hÃ ng;
-- sáº£n pháº©m giÃ¡ trÃªn 50 USD;
-- sáº£n pháº©m ngá»«ng kinh doanh;
-- nhÃ¢n viÃªn xá»­ lÃ½ nhiá»u Ä‘Æ¡n hÃ ng nháº¥t;
-- danh sÃ¡ch nhÃ¢n viÃªn vÃ  ngÃ y vÃ o lÃ m;
-- nhÃ¢n viÃªn cÃ³ doanh thu bÃ¡n hÃ ng cao nháº¥t;
-- sá»‘ lÆ°á»£ng Ä‘Æ¡n hÃ ng Ä‘Ã£ Ä‘Æ°á»£c Ä‘áº·t;
-- Ä‘Æ¡n hÃ ng cÃ³ giÃ¡ trá»‹ lá»›n nháº¥t;
-- Ä‘Æ¡n hÃ ng bá»‹ giao trá»…;
-- trung bÃ¬nh sá»‘ sáº£n pháº©m má»—i Ä‘Æ¡n hÃ ng;
-- khÃ¡ch hÃ ng mua nhiá»u nháº¥t.
-- khÃ¡ch hÃ ng chÆ°a tá»«ng Ä‘áº·t Ä‘Æ¡n hÃ ng;
-- nhÃ  cung cáº¥p tá»« Nháº­t Báº£n;
-- unsafe request Ä‘Æ°á»£c tá»« chá»‘i báº±ng rule-based guardrail.
+- tổng doanh thu công ty;
+- doanh thu theo quốc gia;
+- tháng có doanh thu cao nhất;
+- top sản phẩm bán chạy;
+- sản phẩm chưa từng được đặt hàng;
+- sản phẩm giá trên 50 USD;
+- sản phẩm ngừng kinh doanh;
+- nhân viên xử lý nhiều đơn hàng nhất;
+- danh sách nhân viên và ngày vào làm;
+- nhân viên có doanh thu bán hàng cao nhất;
+- số lượng đơn hàng đã được đặt;
+- đơn hàng có giá trị lớn nhất;
+- đơn hàng bị giao trễ;
+- trung bình số sản phẩm mỗi đơn hàng;
+- khách hàng mua nhiều nhất.
+- khách hàng chưa từng đặt đơn hàng;
+- nhà cung cấp từ Nhật Bản;
+- unsafe request được từ chối bằng rule-based guardrail.
 
 
 ### Qualitative Examples
@@ -490,12 +490,12 @@ Why it passes: intent router nhận diện yêu cầu nguy hiểm sau khi normal
 
 ### Evaluation Methodology
 
-Má»—i test case kiá»ƒm tra 2 Ä‘iá»u kiá»‡n:
+Mỗi test case kiểm tra 2 điều kiện:
 
-1. `success` cá»§a pipeline cÃ³ khá»›p ká»³ vá»ng khÃ´ng.
-2. CÃ¢u tráº£ lá»i cÃ³ chá»©a cÃ¡c keyword nghiá»‡p vá»¥ mong Ä‘á»£i khÃ´ng.
+1. `success` của pipeline có khớp kỳ vọng không.
+2. Câu trả lời có chứa các keyword nghiệp vụ mong đợi không.
 
-Evaluation Ä‘Æ°á»£c cháº¡y end-to-end qua cÃ¹ng pipeline production, khÃ´ng mock LLM hay database:
+Evaluation được chạy end-to-end qua cùng pipeline production, không mock LLM hay database:
 
 ```mermaid
 flowchart LR
@@ -509,31 +509,31 @@ flowchart LR
     Check --> Report["tests/eval_results.json"]
 ```
 
-CÃ¡c nhÃ³m nÄƒng lá»±c Ä‘Æ°á»£c Ä‘o:
+Các nhóm năng lực được đo:
 
 | Capability | Example |
 | --- | --- |
-| Revenue analytics | "Tá»•ng doanh thu cá»§a cÃ´ng ty lÃ  bao nhiÃªu?" |
-| Top-k ranking | "Top 5 sáº£n pháº©m bÃ¡n cháº¡y nháº¥t theo sá»‘ lÆ°á»£ng?" |
-| Join reasoning | "NhÃ¢n viÃªn nÃ o xá»­ lÃ½ nhiá»u Ä‘Æ¡n hÃ ng nháº¥t?" |
-| Negative lookup | "Sáº£n pháº©m nÃ o chÆ°a bao giá» Ä‘Æ°á»£c Ä‘áº·t hÃ ng?" |
-| Filtered retrieval | "Danh sÃ¡ch sáº£n pháº©m cÃ³ giÃ¡ trÃªn 50 USD?" |
-| Safety behavior | "XÃ³a táº¥t cáº£ Ä‘Æ¡n hÃ ng" |
+| Revenue analytics | "Tổng doanh thu của công ty là bao nhiêu?" |
+| Top-k ranking | "Top 5 sản phẩm bán chạy nhất theo số lượng?" |
+| Join reasoning | "Nhân viên nào xử lý nhiều đơn hàng nhất?" |
+| Negative lookup | "Sản phẩm nào chưa bao giờ được đặt hàng?" |
+| Filtered retrieval | "Danh sách sản phẩm có giá trên 50 USD?" |
+| Safety behavior | "Xóa tất cả đơn hàng" |
 
-VÃ¬ há»‡ thá»‘ng cÃ³ thÃ nh pháº§n LLM nondeterministic, accuracy cÃ³ thá»ƒ thay Ä‘á»•i theo:
+Vì hệ thống có thành phần LLM nondeterministic, accuracy có thể thay đổi theo:
 
-- provider/model Ä‘Æ°á»£c chá»n trong `.env`;
-- quota/rate limit táº¡i thá»i Ä‘iá»ƒm cháº¡y;
-- cháº¥t lÆ°á»£ng synthesis cá»§a model;
-- tráº¡ng thÃ¡i database vÃ  schema snapshot.
+- provider/model được chọn trong `.env`;
+- quota/rate limit tại thời điểm chạy;
+- chất lượng synthesis của model;
+- trạng thái database và schema snapshot.
 
-Cháº¡y evaluation:
+Chạy evaluation:
 
 ```bash
 python eval.py
 ```
 
-Khi dÃ¹ng provider cÃ³ quota/rate limit tháº¥p, nÃªn báº­t throttle giá»‘ng benchmark gáº§n nháº¥t:
+Khi dùng provider có quota/rate limit thấp, nên bật throttle giống benchmark gần nhất:
 
 ```bash
 EVAL_DELAY_SECONDS=8 EVAL_CASE_RETRIES=1 EVAL_RETRY_DELAY_SECONDS=30 python eval.py
@@ -549,7 +549,7 @@ $env:PYTHONIOENCODING="utf-8"
 rag-env\Scripts\python.exe eval.py
 ```
 
-Script sáº½ ghi káº¿t quáº£ vÃ o:
+Script sẽ ghi kết quả vào:
 
 ```text
 tests/eval_results.json
@@ -557,65 +557,65 @@ tests/eval_results.json
 
 ### Improvement Targets
 
-CÃ¡c hÆ°á»›ng cáº£i thiá»‡n trá»±c tiáº¿p tá»« káº¿t quáº£ benchmark:
+Các hướng cải thiện trực tiếp từ kết quả benchmark:
 
-- thÃªm retry/backoff riÃªng cho lá»—i provider táº¡m thá»i;
-- cache hoáº·c fallback synthesis tá»‘t hÆ¡n khi SQL Ä‘Ã£ cháº¡y thÃ nh cÃ´ng;
-- tÃ¡ch Ä‘iá»ƒm sá»‘ thÃ nh `sql_execution_accuracy` vÃ  `answer_quality_accuracy` Ä‘á»ƒ Ä‘Ã¡nh giÃ¡ cÃ´ng báº±ng hÆ¡n;
-- thÃªm golden SQL hoáº·c expected numeric values cho cÃ¡c cÃ¢u há»i quan trá»ng;
-- cháº¡y láº¡i benchmark trÃªn Gemini/OpenAI Ä‘á»ƒ so sÃ¡nh model quality vÃ  provider stability.
+- thêm retry/backoff riêng cho lỗi provider tạm thời;
+- cache hoặc fallback synthesis tốt hơn khi SQL đã chạy thành công;
+- tách điểm số thành `sql_execution_accuracy` và `answer_quality_accuracy` để đánh giá công bằng hơn;
+- thêm golden SQL hoặc expected numeric values cho các câu hỏi quan trọng;
+- chạy lại benchmark trên Gemini/OpenAI để so sánh model quality và provider stability.
 
 ## Engineering Decisions
 
-- **Schema snapshot thay vÃ¬ live metadata lookup má»—i request**: giáº£m latency vÃ  giáº£m táº£i database.
-- **Intent router trÆ°á»›c Text-to-SQL**: trÃ¡nh gá»i SQL pipeline cho cÃ¢u chÃ o, cÃ¢u há»i schema hoáº·c yÃªu cáº§u khÃ´ng an toÃ n.
-- **LLM hai bÆ°á»›c**: tÃ¡ch SQL generation vÃ  answer synthesis Ä‘á»ƒ dá»… kiá»ƒm soÃ¡t, debug vÃ  Ä‘Ã¡nh giÃ¡.
-- **Safety validator Ä‘á»™c láº­p vá»›i prompt**: khÃ´ng tin hoÃ n toÃ n vÃ o instruction cá»§a LLM.
-- **Retry cÃ³ error context**: táº­n dá»¥ng kháº£ nÄƒng tá»± sá»­a cá»§a LLM nhÆ°ng váº«n giá»¯ validator lÃ m cá»•ng báº¯t buá»™c.
-- **Provider abstraction**: dá»… chuyá»ƒn giá»¯a Hugging Face, Gemini vÃ  OpenAI theo chi phÃ­, quota hoáº·c cháº¥t lÆ°á»£ng.
+- **Schema snapshot thay vì live metadata lookup mỗi request**: giảm latency và giảm tải database.
+- **Intent router trước Text-to-SQL**: tránh gọi SQL pipeline cho câu chào, câu hỏi schema hoặc yêu cầu không an toàn.
+- **LLM hai bước**: tách SQL generation và answer synthesis để dễ kiểm soát, debug và đánh giá.
+- **Safety validator độc lập với prompt**: không tin hoàn toàn vào instruction của LLM.
+- **Retry có error context**: tận dụng khả năng tự sửa của LLM nhưng vẫn giữ validator làm cổng bắt buộc.
+- **Provider abstraction**: dễ chuyển giữa Hugging Face, Gemini và OpenAI theo chi phí, quota hoặc chất lượng.
 
 ## Current Capabilities
 
-NgÆ°á»i dÃ¹ng cÃ³ thá»ƒ há»i:
+Người dùng có thể hỏi:
 
 ```text
-Top 5 sáº£n pháº©m bÃ¡n cháº¡y nháº¥t?
-Doanh thu theo tá»«ng quá»‘c gia?
-NhÃ¢n viÃªn nÃ o bÃ¡n hÃ ng tá»‘t nháº¥t?
-CÃ³ bao nhiÃªu Ä‘Æ¡n hÃ ng bá»‹ giao trá»…?
-KhÃ¡ch hÃ ng nÃ o chÆ°a tá»«ng Ä‘áº·t hÃ ng?
-Database cÃ³ nhá»¯ng báº£ng nÃ o?
+Top 5 sản phẩm bán chạy nhất?
+Doanh thu theo từng quốc gia?
+Nhân viên nào bán hàng tốt nhất?
+Có bao nhiêu đơn hàng bị giao trễ?
+Khách hàng nào chưa từng đặt hàng?
+Database có những bảng nào?
 ```
 
-Há»‡ thá»‘ng sáº½ tráº£ lá»i kÃ¨m SQL Ä‘Ã£ sá»­ dá»¥ng, sá»‘ dÃ²ng káº¿t quáº£ vÃ  sá»‘ láº§n thá»­. Khi báº­t `debug=true`, response cÃ³ thÃªm intent, reason, schema token count vÃ  result preview.
+Hệ thống sẽ trả lời kèm SQL đã sử dụng, số dòng kết quả và số lần thử. Khi bật `debug=true`, response có thêm intent, reason, schema token count và result preview.
 
 ## Security Scope
 
-Há»‡ thá»‘ng Ä‘Æ°á»£c thiáº¿t káº¿ cho read-only analytics:
+Hệ thống được thiết kế cho read-only analytics:
 
-- khÃ´ng há»— trá»£ ghi dá»¯ liá»‡u;
-- khÃ´ng há»— trá»£ thay Ä‘á»•i schema;
-- khÃ´ng cho phÃ©p truy váº¥n system catalog;
-- khÃ´ng expose raw database credentials qua API;
-- giá»›i háº¡n sá»‘ dÃ²ng tráº£ vá» Ä‘á»ƒ trÃ¡nh response quÃ¡ lá»›n.
+- không hỗ trợ ghi dữ liệu;
+- không hỗ trợ thay đổi schema;
+- không cho phép truy vấn system catalog;
+- không expose raw database credentials qua API;
+- giới hạn số dòng trả về để tránh response quá lớn.
 
-Trong mÃ´i trÆ°á»ng production, nÃªn bá»• sung:
+Trong môi trường production, nên bổ sung:
 
-- database user chá»‰ cÃ³ quyá»n read-only;
+- database user chỉ có quyền read-only;
 - rate limiting;
-- audit log cho cÃ¢u há»i, SQL vÃ  latency;
-- allowlist báº£ng/cá»™t theo role;
+- audit log cho câu hỏi, SQL và latency;
+- allowlist bảng/cột theo role;
 - automated regression test cho golden SQL;
-- secret management thay vÃ¬ `.env` local.
+- secret management thay vì `.env` local.
 
 ## What Makes This Project Strong
 
-Project thá»ƒ hiá»‡n cÃ¡c nÄƒng lá»±c quan trá»ng cá»§a má»™t AI engineer:
+Project thể hiện các năng lực quan trọng của một AI engineer:
 
-- thiáº¿t káº¿ pipeline LLM cÃ³ kiá»ƒm soÃ¡t thay vÃ¬ gá»i model trá»±c tiáº¿p;
-- grounding báº±ng schema tháº­t Ä‘á»ƒ giáº£m hallucination;
-- guardrail nhiá»u lá»›p cho SQL safety;
-- retry vÃ  fallback Ä‘á»ƒ tÄƒng Ä‘á»™ bá»n há»‡ thá»‘ng;
-- API contract rÃµ rÃ ng báº±ng Pydantic;
-- kháº£ nÄƒng Ä‘Ã¡nh giÃ¡ báº±ng benchmark script;
-- kiáº¿n trÃºc Ä‘á»§ modular Ä‘á»ƒ thay datasource, prompt, model hoáº·c UI mÃ  khÃ´ng phÃ¡ vá»¡ toÃ n bá»™ há»‡ thá»‘ng.
+- thiết kế pipeline LLM có kiểm soát thay vì gọi model trực tiếp;
+- grounding bằng schema thật để giảm hallucination;
+- guardrail nhiều lớp cho SQL safety;
+- retry và fallback để tăng độ bền hệ thống;
+- API contract rõ ràng bằng Pydantic;
+- khả năng đánh giá bằng benchmark script;
+- kiến trúc đủ modular để thay datasource, prompt, model hoặc UI mà không phá vỡ toàn bộ hệ thống.
