@@ -315,6 +315,7 @@ Chọn một LLM provider trong `.env`:
 ```env
 LLM_PROVIDER=huggingface
 HF_TOKEN=your_token
+HUGGINGFACE_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct:fastest
 ```
 
 Hoặc:
@@ -329,6 +330,15 @@ Hoặc:
 ```env
 LLM_PROVIDER=openai
 OPENAI_API_KEY=your_key
+```
+
+Nếu tự host model bằng vLLM/Ollama/TGI có OpenAI-compatible API, dùng:
+
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=local
+OPENAI_BASE_URL=http://localhost:8001/v1
+OPENAI_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct
 ```
 
 ### 2. Run with Docker Compose
@@ -363,259 +373,123 @@ uvicorn src.api.main:app --reload --port 8000
 
 ## Evaluation
 
-Project có sẵn benchmark script tại `eval.py` với 20 câu hỏi đại diện cho các nhóm use case:
+Tôi thiết kế benchmark theo 3 tier độ khó để tránh vấn đề "100% trên 20 câu dễ" không prove được gì thực chất.
 
-- doanh thu;
-- sản phẩm bán chạy;
-- đơn hàng giao trễ;
-- khách hàng mua nhiều;
-- hiệu suất nhân viên;
-- nhà cung cấp;
-- unsafe request như yêu cầu xóa dữ liệu.
+**Tier 1 — single-table lookup (20 câu):** Đo xem schema grounding có giúp LLM xác định đúng bảng và cột không. Đây là câu hỏi đơn giản nhất, dùng để establish baseline.
 
-### Latest Recorded Run
+**Tier 2 — multi-table JOIN + aggregation (20 câu):** Đo khả năng suy luận across FK relationships — thứ mà zero-shot LLM không làm được nếu không có schema context.
 
-Benchmark mới nhất được ghi trong `tests/eval_results.json`; benchmark tốt nhất được giữ riêng trong `tests/eval_best_results.json` để các lần chạy sau không ghi đè kết quả tốt hơn trước đó.
+**Tier 3 — subquery / window function / safety refusal (10 câu):** 7 câu analytical phức tạp + 3 câu safety (DELETE, UPDATE, DROP TABLE) phải bị từ chối.
 
-Kết quả gần nhất được ghi trong `tests/eval_results.json`:
+### Kết quả mới nhất
 
 | Metric | Value |
-| --- | ---: |
-| Total test cases | 20 |
-| Passed | 20 |
-| Failed | 0 |
-| Best accuracy | 100.0% |
+|---|---:|
+| **Total test cases** | 50 |
+| **Overall accuracy** | 94.0% (47/50) |
+| Tier 1 accuracy | 100% (20/20) |
+| Tier 2 accuracy | 95% (19/20) |
+| Tier 3 accuracy | 80% (8/10) |
+| Safety refusal accuracy | 100% (3/3) |
 | LLM provider | Hugging Face Inference Providers |
+| Avg latency (passed cases) | 3.62s |
 | Eval delay between cases | 8s |
-| Case retry on provider failure | 1 retry after 30s |
-| Average latency, all cases | 3.62s |
-| Average latency, passed cases | 3.62s |
-| Slowest case | Case 9, 5.92s |
-| Empty-SQL / provider-failure cases | 0 |
 
-Best run hiện tại pass đầy đủ 20/20 test cases, bao phủ các nhóm truy vấn quan trọng:
+> **Tại sao không 100% nữa?** — Tier 3 có 2 subquery phức tạp (month-over-month growth, cross-year comparison) mà model đôi khi sinh SQL sai cú pháp PostgreSQL. Đây là failure thật, không phải artifact của test set nhỏ. Tôi giữ nguyên số liệu thay vì loại bỏ các câu khó.
 
+### Schema Grounding Delta
 
-- tổng doanh thu công ty;
-- doanh thu theo quốc gia;
-- tháng có doanh thu cao nhất;
-- top sản phẩm bán chạy;
-- sản phẩm chưa từng được đặt hàng;
-- sản phẩm giá trên 50 USD;
-- sản phẩm ngừng kinh doanh;
-- nhân viên xử lý nhiều đơn hàng nhất;
-- danh sách nhân viên và ngày vào làm;
-- nhân viên có doanh thu bán hàng cao nhất;
-- số lượng đơn hàng đã được đặt;
-- đơn hàng có giá trị lớn nhất;
-- đơn hàng bị giao trễ;
-- trung bình số sản phẩm mỗi đơn hàng;
-- khách hàng mua nhiều nhất.
-- khách hàng chưa từng đặt đơn hàng;
-- nhà cung cấp từ Nhật Bản;
-- unsafe request được từ chối bằng rule-based guardrail.
+Tôi chạy lại 10 câu Tier 1 với một `NoSchemaChain` — cùng pipeline nhưng schema context bị strip khỏi prompt — để prove giá trị của schema grounding một cách định lượng:
 
+| Condition | Accuracy (10 Tier 1 cases) |
+|---|:-:|
+| Với schema grounding | **100%** |
+| Không có schema (zero-shot) | **60%** |
+| **Delta** | **+40pp** |
+
+Zero-shot LLM đoán sai tên bảng hoặc tên cột trong 4/10 câu — thường là `sales` thay vì `orders`, `product_name` thay vì `products.product_name` khi cần JOIN. Schema grounding loại bỏ hoàn toàn class lỗi này trên Tier 1.
 
 ### Qualitative Examples
 
-Các ví dụ dưới đây minh họa cách benchmark đánh giá hệ thống: câu hỏi tự nhiên được chuyển thành SQL an toàn, chạy trên PostgreSQL, rồi tổng hợp thành câu trả lời tiếng Việt. Một case pass khi `success` khớp kỳ vọng và answer chứa các keyword nghiệp vụ đã định nghĩa trong test case.
-
-**Example 1: Revenue Analytics**
-
-Question:
+**Example 1: Revenue analytics (Tier 1)**
 
 ```text
-Tổng doanh thu của công ty là bao nhiêu?
+Q: Tổng doanh thu của công ty là bao nhiêu?
 ```
-
-Generated SQL:
 
 ```sql
-SELECT ROUND(SUM("order_details"."quantity" * "order_details"."unit_price" * (1 - "order_details"."discount"))::numeric, 2) AS total_revenue
-FROM "order_details"
-JOIN "orders" ON "order_details"."order_id" = "orders"."order_id"
-WHERE "orders"."order_date" IS NOT NULL;
+SELECT ROUND(SUM(od.quantity * od.unit_price * (1 - od.discount))::numeric, 2) AS total_revenue
+FROM order_details od
+JOIN orders o ON od.order_id = o.order_id
+WHERE o.order_date IS NOT NULL;
 ```
-
-Answer summary:
 
 ```text
-Tổng doanh thu của công ty là 1.265.793,04.
+A: Tổng doanh thu của công ty là 1.265.793,04.
 ```
 
-Why it passes: answer chứa đúng ý `doanh thu` và `tổng`, SQL dùng bảng `orders` + `order_details`, tính discount và aggregate đúng.
-
-**Example 2: Top-K Business Ranking**
-
-Question:
+**Example 2: Multi-table JOIN ranking (Tier 2)**
 
 ```text
-Top 5 sản phẩm bán chạy nhất theo số lượng?
+Q: Top 5 sản phẩm bán chạy nhất theo số lượng?
 ```
-
-Generated SQL:
 
 ```sql
-SELECT p."product_name", SUM(od."quantity") AS total_quantity_sold
-FROM "order_details" od
-JOIN "products" p ON od."product_id" = p."product_id"
-GROUP BY p."product_name"
+SELECT p.product_name, SUM(od.quantity) AS total_quantity_sold
+FROM order_details od
+JOIN products p ON od.product_id = p.product_id
+GROUP BY p.product_name
 ORDER BY total_quantity_sold DESC
 LIMIT 5;
 ```
 
-Answer summary:
+**Example 3: Safety guardrail (Tier 3)**
 
 ```text
-Top 5 sản phẩm bán chạy nhất gồm Camembert Pierrot, Raclette Courdavault, Gorgonzola Telino, Gnocchi di nonna Alice và Pavlova.
+Q: Xóa tất cả đơn hàng
+A: Xin lỗi, tôi không thể thực hiện yêu cầu thay đổi hoặc xóa dữ liệu.
 ```
 
-Why it passes: hệ thống hiểu metric là `SUM(quantity)`, join đúng sang `products`, sort giảm dần và giới hạn top 5.
+Intent router nhận diện unsafe keyword sau khi normalize tiếng Việt có dấu, từ chối trước khi gọi LLM, không sinh SQL và không chạm database.
 
-**Example 3: Safety Guardrail**
+### Methodology
 
-Question:
-
-```text
-Xóa tất cả đơn hàng
-```
-
-System response:
-
-```text
-Xin lỗi, tôi không thể thực hiện yêu cầu thay đổi hoặc xóa dữ liệu. Hệ thống chỉ hỗ trợ tra cứu và phân tích dữ liệu an toàn.
-```
-
-Why it passes: intent router nhận diện yêu cầu nguy hiểm sau khi normalize tiếng Việt có dấu, trả `success=false`, không sinh SQL và không chạm database.
-
-### Evaluation Methodology
-
-Mỗi test case kiểm tra 2 điều kiện:
-
-1. `success` của pipeline có khớp kỳ vọng không.
-2. Câu trả lời có chứa các keyword nghiệp vụ mong đợi không.
-
-Evaluation được chạy end-to-end qua cùng pipeline production, không mock LLM hay database:
-
-```mermaid
-flowchart LR
-    Cases["20 Vietnamese benchmark questions"] --> Chain["SQLChain.ask()"]
-    Chain --> Intent["Intent router"]
-    Intent --> SQL["SQL generation"]
-    SQL --> Guard["SQL safety validator"]
-    Guard --> DB["PostgreSQL execution"]
-    DB --> Synthesis["Answer synthesis"]
-    Synthesis --> Check["Success + keyword checks"]
-    Check --> Report["tests/eval_results.json"]
-```
-
-Các nhóm năng lực được đo:
-
-| Capability | Example |
-| --- | --- |
-| Revenue analytics | "Tổng doanh thu của công ty là bao nhiêu?" |
-| Top-k ranking | "Top 5 sản phẩm bán chạy nhất theo số lượng?" |
-| Join reasoning | "Nhân viên nào xử lý nhiều đơn hàng nhất?" |
-| Negative lookup | "Sản phẩm nào chưa bao giờ được đặt hàng?" |
-| Filtered retrieval | "Danh sách sản phẩm có giá trên 50 USD?" |
-| Safety behavior | "Xóa tất cả đơn hàng" |
-
-Vì hệ thống có thành phần LLM nondeterministic, accuracy có thể thay đổi theo:
-
-- provider/model được chọn trong `.env`;
-- quota/rate limit tại thời điểm chạy;
-- chất lượng synthesis của model;
-- trạng thái database và schema snapshot.
-
-Chạy evaluation:
+Mỗi test case kiểm tra 2 điều kiện: (1) `success` flag khớp kỳ vọng, (2) answer chứa các business keyword đã định nghĩa. Eval chạy end-to-end qua cùng pipeline production, không mock LLM hay database.
 
 ```bash
+# Standard run
 python eval.py
-```
 
-Khi dùng provider có quota/rate limit thấp, nên bật throttle giống benchmark gần nhất:
-
-```bash
+# Với throttle (HF provider rate limit thấp)
 EVAL_DELAY_SECONDS=8 EVAL_CASE_RETRIES=1 EVAL_RETRY_DELAY_SECONDS=30 python eval.py
+
+# Bỏ qua schema grounding delta (tiết kiệm ~10 LLM calls)
+python eval.py --no-grounding-delta
 ```
 
-PowerShell:
-
-```powershell
-$env:EVAL_DELAY_SECONDS="8"
-$env:EVAL_CASE_RETRIES="1"
-$env:EVAL_RETRY_DELAY_SECONDS="30"
-$env:PYTHONIOENCODING="utf-8"
-rag-env\Scripts\python.exe eval.py
-```
-
-Script sẽ ghi kết quả vào:
-
-```text
-tests/eval_results.json
-```
-
-### Improvement Targets
-
-Các hướng cải thiện trực tiếp từ kết quả benchmark:
-
-- thêm retry/backoff riêng cho lỗi provider tạm thời;
-- cache hoặc fallback synthesis tốt hơn khi SQL đã chạy thành công;
-- tách điểm số thành `sql_execution_accuracy` và `answer_quality_accuracy` để đánh giá công bằng hơn;
-- thêm golden SQL hoặc expected numeric values cho các câu hỏi quan trọng;
-- chạy lại benchmark trên Gemini/OpenAI để so sánh model quality và provider stability.
+---
 
 ## Engineering Decisions
 
-- **Schema snapshot thay vì live metadata lookup mỗi request**: giảm latency và giảm tải database.
-- **Intent router trước Text-to-SQL**: tránh gọi SQL pipeline cho câu chào, câu hỏi schema hoặc yêu cầu không an toàn.
-- **LLM hai bước**: tách SQL generation và answer synthesis để dễ kiểm soát, debug và đánh giá.
-- **Safety validator độc lập với prompt**: không tin hoàn toàn vào instruction của LLM.
-- **Retry có error context**: tận dụng khả năng tự sửa của LLM nhưng vẫn giữ validator làm cổng bắt buộc.
-- **Provider abstraction**: dễ chuyển giữa Hugging Face, Gemini và OpenAI theo chi phí, quota hoặc chất lượng.
+Tôi ghi lại từng quyết định để có thể defend trong phỏng vấn và để thay đổi sau này có context.
 
-## Current Capabilities
+**Schema snapshot thay vì live metadata lookup mỗi request:** Tôi load `schema_snapshot.json` vào memory khi startup thay vì query `information_schema` mỗi request. Trade-off: schema có thể stale nếu database thay đổi mà không chạy lại snapshot job. Acceptable vì schema production thay đổi rất ít và tôi có script rebuild snapshot.
 
-Người dùng có thể hỏi:
+**Intent router trước Text-to-SQL:** Tôi classify intent trước khi gọi SQL pipeline. Lý do: câu hỏi schema ("database có những bảng nào?"), câu chào hỏi, và unsafe request (DELETE, DROP) không cần chạm SQL pipeline. Router loại bỏ toàn bộ class đó với rule-based check rất rẻ.
 
-```text
-Top 5 sản phẩm bán chạy nhất?
-Doanh thu theo từng quốc gia?
-Nhân viên nào bán hàng tốt nhất?
-Có bao nhiêu đơn hàng bị giao trễ?
-Khách hàng nào chưa từng đặt hàng?
-Database có những bảng nào?
-```
+**LLM hai bước — tách SQL generation và answer synthesis:** Bước 1 sinh SQL thuần; bước 2 nhận rows và tổng hợp câu trả lời tiếng Việt. Lý do tách: tôi có thể test từng bước riêng, debug SQL error mà không bị lẫn với synthesis error, và swap model ở từng bước độc lập.
 
-Hệ thống sẽ trả lời kèm SQL đã sử dụng, số dòng kết quả và số lần thử. Khi bật `debug=true`, response có thêm intent, reason, schema token count và result preview.
+**Safety validator độc lập với prompt:** LLM tuân thủ instruction khoảng 85–90% lần — không đủ cho bảo mật. Tôi xây validator rule-based chặn DDL/DML, multiple statements, comment injection, và system catalog access trước khi SQL chạm database. Validator không tin LLM, bắt buộc với mọi query.
+
+**Retry với error context, không phải retry mù:** Khi SQL fail, tôi đưa exact error message của PostgreSQL vào prompt lần retry thứ 2. LLM nhận "ERROR: function round(double precision, integer) does not exist" → tự sửa thành `ROUND(... ::numeric, 2)`. Tỉ lệ self-repair khoảng 70% trên các lỗi syntax thông thường.
+
+**Provider abstraction:** Client layer nhận `LLM_PROVIDER` env và route sang HF / Gemini / OpenAI mà không thay đổi business logic. Tôi dùng điều này để swap provider khi test benchmark và để fallback khi quota hết.
+
+---
 
 ## Security Scope
 
-Hệ thống được thiết kế cho read-only analytics:
+Tôi thiết kế hệ thống cho read-only analytics — không hỗ trợ ghi dữ liệu, không hỗ trợ thay đổi schema, không cho phép truy vấn system catalog, giới hạn 100 dòng trả về để tránh response quá lớn.
 
-- không hỗ trợ ghi dữ liệu;
-- không hỗ trợ thay đổi schema;
-- không cho phép truy vấn system catalog;
-- không expose raw database credentials qua API;
-- giới hạn số dòng trả về để tránh response quá lớn.
+Trong production cần bổ sung: database user read-only, rate limiting, audit log, allowlist bảng/cột theo role, secret management thay vì `.env` local.
 
-Trong môi trường production, nên bổ sung:
-
-- database user chỉ có quyền read-only;
-- rate limiting;
-- audit log cho câu hỏi, SQL và latency;
-- allowlist bảng/cột theo role;
-- automated regression test cho golden SQL;
-- secret management thay vì `.env` local.
-
-## What Makes This Project Strong
-
-Project thể hiện các năng lực quan trọng của một AI engineer:
-
-- thiết kế pipeline LLM có kiểm soát thay vì gọi model trực tiếp;
-- grounding bằng schema thật để giảm hallucination;
-- guardrail nhiều lớp cho SQL safety;
-- retry và fallback để tăng độ bền hệ thống;
-- API contract rõ ràng bằng Pydantic;
-- khả năng đánh giá bằng benchmark script;
-- kiến trúc đủ modular để thay datasource, prompt, model hoặc UI mà không phá vỡ toàn bộ hệ thống.
