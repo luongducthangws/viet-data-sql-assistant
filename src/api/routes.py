@@ -24,13 +24,16 @@ def get_chain():
 
 
 @router.get("/health", response_model=HealthResponse, tags=["system"])
-async def health(chain=Depends(get_chain)):
-    """Health check - dùng cho Docker HEALTHCHECK."""
+async def health():
+    """Health check - Railway chỉ cần 200, chi tiết DB/chain là bonus."""
+    from src.api.main import app
+
     db_ok = check_connection()
+    chain_ready = hasattr(app.state, "chain") and app.state.chain is not None
     return HealthResponse(
         status="ok" if db_ok else "degraded",
         db_connected=db_ok,
-        chain_ready=chain is not None,
+        chain_ready=chain_ready,
     )
 
 
