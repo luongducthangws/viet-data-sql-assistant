@@ -6,12 +6,16 @@ Chay: uvicorn src.api.main:app --reload --port 8000
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-from src.api.ui import render_app
+# React build output (frontend/vite.config.ts -> outDir: "../dist")
+DIST_DIR = Path(__file__).resolve().parents[3] / "dist"
 
 load_dotenv()
 logging.basicConfig(
@@ -61,6 +65,17 @@ from src.api.routes import router
 app.include_router(router, prefix="/api/v1")
 
 
-@app.get("/", tags=["root"])
+@app.get("/", response_class=HTMLResponse, tags=["root"])
 async def root():
-    return render_app()
+    index = DIST_DIR / "index.html"
+    if index.exists():
+        return HTMLResponse(index.read_text())
+    return HTMLResponse(
+        "<h2>Frontend not built. Run: cd frontend && npm run build</h2>",
+        status_code=503,
+    )
+
+
+# Serve React static assets -- must be after all API routes
+if DIST_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")

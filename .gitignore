@@ -40,3 +40,11 @@ build/
 dist/
 *.egg-info/
 db/schema_snapchat.json
+
+# Uvicorn log files
+uvicorn*.log
+uvicorn*.out.log
+uvicorn*.err.log
+
+node_modules/
+frontend/node_modules/
