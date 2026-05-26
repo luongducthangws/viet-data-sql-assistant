@@ -58,11 +58,12 @@ def validate_llm_config() -> str:
     gemini_key = _get_env("GEMINI_API_KEY")
     openai_key = _get_env("OPENAI_API_KEY")
     huggingface_key = _get_env("HF_TOKEN") or _get_env("HUGGINGFACE_API_KEY")
+    groq_key = _get_env("GROQ_API_KEY")
 
-    if provider not in {"gemini", "openai", "huggingface"}:
+    if provider not in {"gemini", "openai", "huggingface", "groq"}:
         raise LLMConfigurationError(
             "LLM_PROVIDER khong hop le: "
-            f"'{provider}'. Dung 'gemini', 'openai' hoac 'huggingface'."
+            f"'{provider}'. Dung 'gemini', 'openai', 'groq' hoac 'huggingface'."
         )
 
     if provider == "gemini" and not gemini_key:
@@ -70,6 +71,9 @@ def validate_llm_config() -> str:
 
     if provider == "openai" and not openai_key:
         raise LLMConfigurationError("Thieu OPENAI_API_KEY trong .env.")
+
+    if provider == "groq" and not groq_key:
+        raise LLMConfigurationError("Thieu GROQ_API_KEY trong .env.")
 
     if provider == "huggingface" and not huggingface_key:
         raise LLMConfigurationError("Thieu HF_TOKEN hoac HUGGINGFACE_API_KEY trong .env.")
