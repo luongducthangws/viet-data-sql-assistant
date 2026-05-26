@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/northwind.sql:/docker-entrypoint-initdb.d/01_northwind.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

@@ -67,6 +67,10 @@ def clean_sql(raw: str) -> str:
     if sql_lines:
         sql = "\n".join(sql_lines)
 
+    # Sua mot so loi cu phap MySQL ma LLM hay sinh khi target la PostgreSQL.
+    sql = sql.replace("`", '"')
+    sql = re.sub(r'"order\s+details"', '"order_details"', sql, flags=re.IGNORECASE)
+
     # Đảm bảo kết thúc bằng ";"
     sql = sql.rstrip(";").strip() + ";"
 

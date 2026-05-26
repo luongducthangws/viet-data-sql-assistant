@@ -1,0 +1,16 @@
+.env
+*.env
+rag-env/
+.venv/
+venv/
+frontend/node_modules
+__pycache__/
+*.py[cod]
+*.log
+uvicorn*.out.log
+uvicorn*.err.log
+.git/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+Gemini_Generated_Image_*.png

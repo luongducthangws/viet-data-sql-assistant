@@ -17,7 +17,8 @@ GEMINI_FALLBACK_MODELS = (
     "gemini-flash-latest",
 )
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
-DEFAULT_HUGGINGFACE_MODEL = "Qwen/Qwen2.5-Coder-32B-Instruct:fastest"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_HUGGINGFACE_MODEL = "Qwen/Qwen2.5-Coder-7B-Instruct:fastest"
 HUGGINGFACE_BASE_URL = "https://router.huggingface.co/v1"
 
 
@@ -120,6 +121,31 @@ def _call_gemini(
     )
 
 
+
+def _call_groq(
+    user_prompt: str,
+    system_prompt: str,
+    temperature: float = 0.0,
+    max_tokens: int = 1024,
+) -> str:
+    from groq import Groq
+
+    client = Groq(api_key=_get_env("GROQ_API_KEY"))
+    resp = client.chat.completions.create(
+        model=_get_env("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    content = resp.choices[0].message.content
+    if content and content.strip():
+        return content.strip()
+    raise LLMResponseError("Groq khong tra ve noi dung van ban.")
+
+
 def _call_openai(
     user_prompt: str,
     system_prompt: str,
@@ -128,7 +154,12 @@ def _call_openai(
 ) -> str:
     from openai import OpenAI
 
-    client = OpenAI(api_key=_get_env("OPENAI_API_KEY"))
+    base_url = _get_env("OPENAI_BASE_URL")
+    client_kwargs = {"api_key": _get_env("OPENAI_API_KEY")}
+    if base_url:
+        client_kwargs["base_url"] = base_url
+
+    client = OpenAI(**client_kwargs)
     resp = client.chat.completions.create(
         model=_get_env("OPENAI_MODEL", DEFAULT_OPENAI_MODEL),
         messages=[
@@ -195,6 +226,8 @@ def call_llm(
     provider = validate_llm_config()
 
     try:
+        if provider == "groq":
+            return _call_groq(user_prompt, system_prompt, temperature, max_tokens)
         if provider == "gemini":
             return _call_gemini(user_prompt, system_prompt, temperature, max_tokens)
         if provider == "openai":

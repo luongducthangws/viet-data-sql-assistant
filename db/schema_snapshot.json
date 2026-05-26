@@ -35,19 +35,19 @@
         "category_id": 1,
         "category_name": "Beverages",
         "description": "Soft drinks, coffees, teas, beers, and ales",
-        "picture": "<memory at 0x000001C05F032E00>"
+        "picture": "<memory at 0x000001D81D8B2E00>"
       },
       {
         "category_id": 2,
         "category_name": "Condiments",
         "description": "Sweet and savory sauces, relishes, spreads, and seasonings",
-        "picture": "<memory at 0x000001C05F032EC0>"
+        "picture": "<memory at 0x000001D81D8B2F80>"
       },
       {
         "category_id": 3,
         "category_name": "Confections",
         "description": "Desserts, candies, and sweet breads",
-        "picture": "<memory at 0x000001C05F032C80>"
+        "picture": "<memory at 0x000001D81D8B2D40>"
       }
     ]
   },
@@ -398,7 +398,7 @@
         "country": "USA",
         "home_phone": "(206) 555-9857",
         "extension": "5467",
-        "photo": "<memory at 0x000001C05F033040>",
+        "photo": "<memory at 0x000001D81D8B2EC0>",
         "notes": "Education includes a BA in psychology from Colorado State University in 1970.  She also completed The Art of the Cold Call.  Nancy is a member of Toastmasters International.",
         "reports_to": 2,
         "photo_path": "http://accweb/emmployees/davolio.bmp"
@@ -418,7 +418,7 @@
         "country": "USA",
         "home_phone": "(206) 555-9482",
         "extension": "3457",
-        "photo": "<memory at 0x000001C05F032B00>",
+        "photo": "<memory at 0x000001D81D8B1FC0>",
         "notes": "Andrew received his BTS commercial in 1974 and a Ph.D. in international marketing from the University of Dallas in 1981.  He is fluent in French and Italian and reads German.  He joined the company as a sales representative, was promoted to sales manager in January 1992 and to vice president of sales in March 1993.  Andrew is a member of the Sales Management Roundtable, the Seattle Chamber of Commerce, and the Pacific Rim Importers Association.",
         "reports_to": null,
         "photo_path": "http://accweb/emmployees/fuller.bmp"
@@ -438,7 +438,7 @@
         "country": "USA",
         "home_phone": "(206) 555-3412",
         "extension": "3355",
-        "photo": "<memory at 0x000001C05F032BC0>",
+        "photo": "<memory at 0x000001D81D8B31C0>",
         "notes": "Janet has a BS degree in chemistry from Boston College (1984).  She has also completed a certificate program in food retailing management.  Janet was hired as a sales associate in 1991 and promoted to sales representative in February 1992.",
         "reports_to": 2,
         "photo_path": "http://accweb/emmployees/leverling.bmp"
@@ -608,16 +608,16 @@
     ],
     "foreign_keys": [
       {
-        "column": "customer_id",
-        "references": "customers.customer_id"
-      },
-      {
         "column": "employee_id",
         "references": "employees.employee_id"
       },
       {
         "column": "ship_via",
         "references": "shippers.shipper_id"
+      },
+      {
+        "column": "customer_id",
+        "references": "customers.customer_id"
       }
     ],
     "sample_rows": [

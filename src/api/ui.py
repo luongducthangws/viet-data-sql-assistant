@@ -314,7 +314,7 @@ APP_HTML = """<!DOCTYPE html>
         return;
       }
 
-      const answerHtml = escHtml(data.answer).replace(/\\n/g, '<br>');
+      const answerHtml = renderAnswer(data.answer);
       const sqlId = 'sql-' + Date.now();
 
       const el = document.createElement('div');
@@ -362,6 +362,13 @@ APP_HTML = """<!DOCTYPE html>
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderAnswer(s) {
+    return escHtml(s)
+      .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\\n/g, '<br>');
   }
 </script>
 </body>

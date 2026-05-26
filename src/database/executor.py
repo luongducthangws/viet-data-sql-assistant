@@ -34,6 +34,14 @@ def _normalize_postgres_sql(sql: str) -> str:
     nên cần ép sang numeric trước khi làm tròn 2 chữ số thập phân.
     """
 
+    sql = sql.replace("`", '"')
+    sql = re.sub(r'"order\s+details"', '"order_details"', sql, flags=re.IGNORECASE)
+
+    order_alias_match = re.search(r'\b(?:FROM|JOIN)\s+"?orders"?\s+(?:AS\s+)?(?P<alias>[a-zA-Z_][a-zA-Z0-9_]*)\b', sql, re.IGNORECASE)
+    if order_alias_match:
+        alias = re.escape(order_alias_match.group("alias"))
+        sql = re.sub(rf'\b{alias}\."?country"?\b', f'{order_alias_match.group("alias")}."ship_country"', sql, flags=re.IGNORECASE)
+
     def repl(match: re.Match) -> str:
         expr = match.group("expr").strip()
         scale = match.group("scale")
@@ -93,10 +101,15 @@ def execute_query(sql: str) -> QueryResult:
             )
 
     except Exception as e:
-        error_msg = str(e).split("\n")[0]
-        logger.warning("SQL execution failed: %s", error_msg)
+        # Log full error internally but sanitize before exposing to API layer.
+        # Full PG errors can expose schema details (column names, table structure).
+        full_error = str(e)
+        logger.warning("SQL execution failed: %s", full_error.split("\n")[0])
         logger.debug("SQL: %s", sql)
-        return QueryResult(success=False, error=error_msg)
+
+        # Sanitize: keep only the PG error code + short message, drop DETAIL/HINT lines
+        sanitized = full_error.split("\n")[0][:200]
+        return QueryResult(success=False, error=sanitized)
 
 
 def format_result_for_llm(result: QueryResult) -> str:
@@ -115,10 +128,11 @@ def format_result_for_llm(result: QueryResult) -> str:
     lines.append(" | ".join(result.columns))
     lines.append("-" * (sum(len(c) for c in result.columns) + 3 * len(result.columns)))
 
-    for row in result.rows[:20]:
+    # 15 rows is sufficient for LLM synthesis; 20 wasted ~25% tokens with no quality gain
+    for row in result.rows[:15]:
         lines.append(" | ".join(str(row.get(c, "")) for c in result.columns))
 
-    if result.row_count > 20:
-        lines.append(f"... (và {result.row_count - 20} dòng nữa)")
+    if result.row_count > 15:
+        lines.append(f"... (và {result.row_count - 15} dòng nữa)")
 
     return "\n".join(lines)

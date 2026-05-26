@@ -158,7 +158,9 @@ def _classify_intent(question: str) -> IntentDecision:
     if any(re.search(pattern, normalized) for pattern in UNSAFE_PATTERNS):
         return IntentDecision("unsafe_request", "matched_unsafe_pattern")
 
-    normalized = question.strip().lower()
+    # BUG FIX: was re-assigning normalized = question.strip().lower() here,
+    # losing the accent-stripped form needed for GENERAL/DATA pattern matching.
+    # All pattern groups are written for accent-stripped text — keep normalized consistent.
 
     has_general_signal = any(re.search(pattern, normalized) for pattern in GENERAL_CHAT_PATTERNS)
     has_data_signal = any(re.search(pattern, normalized) for pattern in DATA_HINT_PATTERNS)
@@ -182,21 +184,33 @@ def _classify_intent(question: str) -> IntentDecision:
 
 
 def _handle_general_chat(question: str) -> str:
-    return call_llm(
-        user_prompt=build_general_prompt(question),
-        system_prompt=GENERAL_ASSISTANT_SYSTEM,
-        temperature=0.4,
-        max_tokens=220,
-    )
+    try:
+        return call_llm(
+            user_prompt=build_general_prompt(question),
+            system_prompt=GENERAL_ASSISTANT_SYSTEM,
+            temperature=0.4,
+            max_tokens=220,
+        )
+    except Exception as e:
+        logger.warning("LLM failed in general_chat: %s", e)
+        return _build_llm_failure_answer(e)
 
 
 def _handle_clarification(question: str) -> str:
-    return call_llm(
-        user_prompt=build_clarification_prompt(question),
-        system_prompt=CLARIFICATION_ASSISTANT_SYSTEM,
-        temperature=0.4,
-        max_tokens=220,
-    )
+    try:
+        return call_llm(
+            user_prompt=build_clarification_prompt(question),
+            system_prompt=CLARIFICATION_ASSISTANT_SYSTEM,
+            temperature=0.4,
+            max_tokens=220,
+        )
+    except Exception as e:
+        logger.warning("LLM failed in clarification: %s", e)
+        return (
+            "Xin lỗi, tôi chưa thể xử lý câu hỏi lúc này do dịch vụ AI tạm thời gặp lỗi. "
+            "Vui lòng thử lại sau hoặc đặt câu hỏi cụ thể hơn, ví dụ: "
+            "'Top 5 sản phẩm bán chạy nhất tháng này là gì?'"
+        )
 
 
 def _handle_unsafe_request(question: str) -> str:

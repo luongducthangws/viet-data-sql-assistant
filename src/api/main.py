@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 # React build output (frontend/vite.config.ts -> outDir: "../dist")
-DIST_DIR = Path(__file__).resolve().parents[3] / "dist"
+DIST_DIR = Path(__file__).resolve().parents[2] / "dist"
 
 load_dotenv()
 logging.basicConfig(
