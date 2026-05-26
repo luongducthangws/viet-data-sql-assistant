@@ -19,7 +19,7 @@ from src.database.schema_inspector import (
     format_table_schema_for_chat,
     load_schema,
 )
-from src.llm.client import call_llm
+from src.llm.client import LLMConfigurationError, call_llm
 from src.llm.prompt_builder import (
     CLARIFICATION_ASSISTANT_SYSTEM,
     GENERAL_ASSISTANT_SYSTEM,
@@ -105,15 +105,39 @@ def _build_query_failure_answer() -> str:
 
 
 def _build_llm_failure_answer(error: Exception) -> str:
+    if isinstance(error, LLMConfigurationError):
+        return (
+            "AI chua duoc cau hinh dung. Vui long kiem tra bien moi truong "
+            "LLM_PROVIDER va API key tuong ung tren Railway."
+        )
+
     message = str(error).lower()
-    if "quota" in message or "resource_exhausted" in message or "429" in message:
+    if (
+        "invalid_api_key" in message
+        or "invalid api key" in message
+        or "api key" in message
+        or "unauthorized" in message
+        or "authentication" in message
+        or "401" in message
+    ):
+        return (
+            "API key cua dich vu AI khong hop le hoac chua duoc cau hinh. "
+            "Vui long kiem tra lai bien moi truong tren Railway."
+        )
+    if "model" in message and ("not found" in message or "decommissioned" in message):
+        return (
+            "Model AI dang cau hinh khong kha dung. Vui long kiem tra bien "
+            "GROQ_MODEL tren Railway."
+        )
+    if "quota" in message or "resource_exhausted" in message or "rate limit" in message or "429" in message:
         return (
             "Dịch vụ AI hiện đã chạm giới hạn quota nên tôi chưa thể xử lý câu hỏi lúc này. "
             "Vui lòng chờ một lúc rồi thử lại, hoặc đổi sang provider/model khác trong file .env."
         )
+    detail = str(error).splitlines()[0][:180]
     return (
-        "Tôi chưa thể sinh câu trả lời do dịch vụ AI đang gặp lỗi tạm thời. "
-        "Vui lòng thử lại sau."
+        "Toi chua the sinh cau tra loi do dich vu AI dang gap loi. "
+        f"Chi tiet ky thuat: {type(error).__name__}: {detail}"
     )
 
 

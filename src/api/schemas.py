@@ -31,6 +31,19 @@ class HealthResponse(BaseModel):
     status: str
     db_connected: bool
     chain_ready: bool
+    db_error: Optional[str] = None
+    llm_provider: str
+    llm_configured: bool
+    llm_error: Optional[str] = None
+
+
+class LLMTestResponse(BaseModel):
+    provider: str
+    configured: bool
+    ok: bool
+    response: Optional[str] = None
+    error_type: Optional[str] = None
+    error: Optional[str] = None
 
 
 class SchemaResponse(BaseModel):

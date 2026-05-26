@@ -32,7 +32,17 @@ class LLMResponseError(RuntimeError):
 
 def _get_env(name: str, default: str = "") -> str:
     value = os.getenv(name, default)
-    return value.strip() if isinstance(value, str) else default
+    if not isinstance(value, str):
+        return default
+
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1].strip()
+    return value
+
+
+def _get_provider() -> str:
+    return _get_env("LLM_PROVIDER", "huggingface").split("#", 1)[0].strip().lower()
 
 
 def _normalize_gemini_model_name(model_name: str) -> str:
@@ -54,7 +64,7 @@ def _candidate_gemini_models(configured_model: str) -> list[str]:
 
 
 def validate_llm_config() -> str:
-    provider = _get_env("LLM_PROVIDER", "huggingface").lower()
+    provider = _get_provider()
     gemini_key = _get_env("GEMINI_API_KEY")
     openai_key = _get_env("OPENAI_API_KEY")
     huggingface_key = _get_env("HF_TOKEN") or _get_env("HUGGINGFACE_API_KEY")
@@ -79,6 +89,15 @@ def validate_llm_config() -> str:
         raise LLMConfigurationError("Thieu HF_TOKEN hoac HUGGINGFACE_API_KEY trong .env.")
 
     return provider
+
+
+def get_llm_status() -> dict:
+    provider = _get_provider()
+    try:
+        validate_llm_config()
+        return {"provider": provider, "configured": True, "error": None}
+    except Exception as exc:
+        return {"provider": provider, "configured": False, "error": str(exc)}
 
 
 def _call_gemini(

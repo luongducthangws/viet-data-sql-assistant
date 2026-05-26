@@ -12,6 +12,16 @@ interface Message {
   error?: boolean;
 }
 
+interface HealthStatus {
+  status: "ok" | "degraded";
+  db_connected: boolean;
+  chain_ready: boolean;
+  db_error?: string | null;
+  llm_provider: string;
+  llm_configured: boolean;
+  llm_error?: string | null;
+}
+
 // ── API ────────────────────────────────────────────────────────────────────────
 const api = {
   async ask(question: string) {
@@ -28,7 +38,7 @@ const api = {
     if (!r.ok) throw new Error("Không tải được schema");
     return r.json();
   },
-  async health() {
+  async health(): Promise<HealthStatus> {
     const r = await fetch("/api/v1/health");
     return r.json();
   },
@@ -71,6 +81,7 @@ function App() {
   const [tables, setTables] = useState<string[]>([]);
   const [tablesLoaded, setTablesLoaded] = useState(false);
   const [health, setHealth] = useState<"ok" | "degraded" | "error" | "unknown">("unknown");
+  const [healthDetail, setHealthDetail] = useState("Dang kiem tra");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -80,8 +91,22 @@ function App() {
 
   useEffect(() => {
     api.health()
-      .then((d) => setHealth(d.status === "ok" ? "ok" : "degraded"))
-      .catch(() => setHealth("error"));
+      .then((d) => {
+        setHealth(d.status === "ok" ? "ok" : "degraded");
+        if (!d.db_connected) {
+          setHealthDetail("DB chua ket noi");
+        } else if (!d.llm_configured) {
+          setHealthDetail(`AI chua cau hinh (${d.llm_provider})`);
+        } else if (!d.chain_ready) {
+          setHealthDetail("Chain chua san sang");
+        } else {
+          setHealthDetail("He thong san sang");
+        }
+      })
+      .catch(() => {
+        setHealth("error");
+        setHealthDetail("Khong goi duoc API");
+      });
   }, []);
 
   async function loadSchema() {
@@ -140,14 +165,8 @@ function App() {
 
         <div className="health-row">
           <span className={`dot ${healthDot}`} />
-          <span className="health-label">
-            {health === "ok"
-              ? "Database kết nối"
-              : health === "degraded"
-              ? "Kết nối yếu"
-              : health === "unknown"
-              ? "Đang kiểm tra…"
-              : "Mất kết nối"}
+          <span className="health-label" title={healthDetail}>
+            {health === "unknown" ? "Dang kiem tra..." : healthDetail}
           </span>
         </div>
 

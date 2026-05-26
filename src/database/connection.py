@@ -1,5 +1,5 @@
 """
-src/database/connection.py — SQLAlchemy engine và session factory
+src/database/connection.py - SQLAlchemy engine and session factory.
 """
 
 import os
@@ -11,12 +11,11 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/northwind",
-)
+DEFAULT_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/northwind"
+DATABASE_URL = (os.getenv("DATABASE_URL") or DEFAULT_DATABASE_URL).strip()
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# pool_pre_ping=True: tự reconnect nếu connection bị drop
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
@@ -29,7 +28,7 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 @contextmanager
 def get_db():
-    """Context manager — dùng với `with get_db() as db:`."""
+    """Context manager used as `with get_db() as db:`."""
     db = SessionLocal()
     try:
         yield db
@@ -38,10 +37,16 @@ def get_db():
 
 
 def check_connection() -> bool:
-    """Health check — trả về True nếu kết nối DB OK."""
+    """Return True when the database connection is usable."""
+    ok, _ = check_connection_detail()
+    return ok
+
+
+def check_connection_detail() -> tuple[bool, str | None]:
+    """Return database health and a sanitized error message."""
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return True
-    except Exception:
-        return False
+        return True, None
+    except Exception as exc:
+        return False, str(exc).splitlines()[0][:240]

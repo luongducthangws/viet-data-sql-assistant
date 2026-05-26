@@ -304,6 +304,30 @@ Response:
 
 ## Quickstart
 
+## Deploy on Railway
+
+1. Create a Railway project from this repo.
+2. Add a PostgreSQL service in the same Railway project.
+3. In the app service variables, set:
+
+```env
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_key
+GROQ_MODEL=llama-3.3-70b-versatile
+LOG_LEVEL=INFO
+```
+
+You can use another provider by setting the matching key instead, for example
+`LLM_PROVIDER=gemini` with `GEMINI_API_KEY`, or `LLM_PROVIDER=openai` with
+`OPENAI_API_KEY`.
+
+Railway uses the root `Dockerfile`. The configured pre-deploy command
+`python db/seed.py` loads `db/northwind.sql` into the Railway PostgreSQL
+database before the app starts. The runtime uses the committed
+`db/schema_snapshot.json` for prompt context, then listens on Railway's `$PORT`
+and exposes the health check at `/api/v1/health`.
+
 ### 1. Configure environment
 
 ```bash
@@ -492,4 +516,3 @@ Tôi ghi lại từng quyết định để có thể defend trong phỏng vấn
 Tôi thiết kế hệ thống cho read-only analytics — không hỗ trợ ghi dữ liệu, không hỗ trợ thay đổi schema, không cho phép truy vấn system catalog, giới hạn 100 dòng trả về để tránh response quá lớn.
 
 Trong production cần bổ sung: database user read-only, rate limiting, audit log, allowlist bảng/cột theo role, secret management thay vì `.env` local.
-
